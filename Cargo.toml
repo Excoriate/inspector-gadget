@@ -1,7 +1,14 @@
 [package]
-name = "inspector-gadget"
+name = "inspector-cli"
 version = "0.1.0"
+authors = ["Your Name <your.email@example.com>"]
 edition = "2021"
+description = "A CLI tool for inspecting and analyzing web links"
+license = "MIT"
+repository = "https://github.com/yourusername/inspector-cli"
+readme = "README.md"
+keywords = ["cli", "web", "inspector", "links"]
+categories = ["command-line-utilities", "web-programming"]
 
 [dependencies]
 clap = "2.33"
@@ -16,3 +23,8 @@ log = "0.4"
 env_logger = "0.9"
 url = { version = "2.2", features = ["serde"] }
 regex = "1.5"
+dirs = "4.0"
+
+[[bin]]
+name = "inspector-cli"
+path = "src/main.rs"

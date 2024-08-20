@@ -1,40 +1,48 @@
+//! Inspector CLI
+//!
+//! A CLI tool for inspecting and analyzing web links.
+
 use clap::{App, Arg};
 use reqwest::blocking::ClientBuilder;
 use scraper::{Html, Selector};
 use std::collections::{HashSet, HashMap};
 use std::error::Error;
 use std::fs::File;
-use std::io::{Read, Write};
+use std::io::Write;
+use std::path::PathBuf;
 use std::time::Duration;
 use log::{info, error};
 use url::Url;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use clipboard::{ClipboardContext, ClipboardProvider};
 use regex::Regex;
-use serde_yaml::Value;
+use std::fs;
 
-#[derive(Debug, Serialize, Deserialize)]
+/// Configuration structure for the Inspector CLI
+#[derive(Debug, Serialize, Deserialize, Default)]
 struct Config {
-    ignore: IgnoreConfig,
-    forbidden_domains: Vec<String>,
-    #[serde(default)]
-    ignored_childs: Vec<String>,
-    timeout: u64,
-    default_output: String,
+    ignore: Option<IgnoreConfig>,
+    forbidden_domains: Option<Vec<String>>,
+    ignored_childs: Option<Vec<String>>,
+    timeout: Option<u64>,
+    default_output: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+/// Ignore configuration structure
+#[derive(Debug, Serialize, Deserialize, Default)]
 struct IgnoreConfig {
-    domains: Vec<String>,
-    regex: Vec<String>,
+    domains: Option<Vec<String>>,
+    regex: Option<Vec<String>>,
 }
 
+/// Information about a link
 #[derive(Debug, Serialize)]
 struct LinkInfo {
     url: String,
     status: LinkStatus,
 }
 
+/// Status of a link
 #[derive(Debug, Serialize)]
 enum LinkStatus {
     Valid,
@@ -43,10 +51,26 @@ enum LinkStatus {
     Ignored,
 }
 
+/// Load configuration from a file or use default settings
+fn load_config(config_path: Option<&str>) -> Result<Config, Box<dyn Error>> {
+    let config_path = config_path
+        .map(PathBuf::from)
+        .unwrap_or_else(|| dirs::home_dir().unwrap().join(".inspector-config.yml"));
+
+    if config_path.exists() {
+        let config_str = fs::read_to_string(config_path)?;
+        let config = serde_yaml::from_str(&config_str).map_err(|e| e.into())?;
+        Ok(config)
+    } else {
+        Ok(Config::default())
+    }
+}
+
+/// Main function to run the Inspector CLI
 fn main() -> Result<(), Box<dyn Error>> {
     env_logger::init();
 
-    let matches = App::new("inspector-gadget")
+    let matches = App::new("inspector-cli")
         .version("0.1.0")
         .about("Inspects links on a documentation site")
         .arg(Arg::with_name("URL")
@@ -83,6 +107,36 @@ fn main() -> Result<(), Box<dyn Error>> {
         .arg(Arg::with_name("strict")
             .long("strict")
             .help("Only scan links that are under or children of the passed URL"))
+        .arg(Arg::with_name("config")
+            .long("config")
+            .value_name("FILE")
+            .help("Sets a custom config file")
+            .takes_value(true))
+        .arg(Arg::with_name("ignore-domains")
+            .long("ignore-domains")
+            .value_name("DOMAINS")
+            .help("Comma-separated list of domains to ignore")
+            .takes_value(true))
+        .arg(Arg::with_name("ignore-regex")
+            .long("ignore-regex")
+            .value_name("REGEX")
+            .help("Comma-separated list of regex patterns to ignore URLs")
+            .takes_value(true))
+        .arg(Arg::with_name("forbidden-domains")
+            .long("forbidden-domains")
+            .value_name("DOMAINS")
+            .help("Comma-separated list of forbidden domains")
+            .takes_value(true))
+        .arg(Arg::with_name("ignored-childs")
+            .long("ignored-childs")
+            .value_name("PATHS")
+            .help("Comma-separated list of child paths to ignore")
+            .takes_value(true))
+        .arg(Arg::with_name("timeout")
+            .long("timeout")
+            .value_name("SECONDS")
+            .help("Timeout in seconds for each HTTP request")
+            .takes_value(true))
         .get_matches();
 
     let url = matches.value_of("URL").unwrap();
@@ -97,16 +151,38 @@ fn main() -> Result<(), Box<dyn Error>> {
     info!("Starting link inspection for {}", url);
 
     // Load configuration
-    let config = load_config()?;
+    let mut config = load_config(matches.value_of("config"))?;
+
+    // Override config with command-line arguments
+    if let Some(ignore_domains) = matches.value_of("ignore-domains") {
+        config.ignore.get_or_insert(IgnoreConfig::default()).domains = Some(ignore_domains.split(',').map(String::from).collect());
+    }
+    if let Some(ignore_regex) = matches.value_of("ignore-regex") {
+        config.ignore.get_or_insert(IgnoreConfig::default()).regex = Some(ignore_regex.split(',').map(String::from).collect());
+    }
+    if let Some(forbidden_domains) = matches.value_of("forbidden-domains") {
+        config.forbidden_domains = Some(forbidden_domains.split(',').map(String::from).collect());
+    }
+    if let Some(ignored_childs) = matches.value_of("ignored-childs") {
+        config.ignored_childs = Some(ignored_childs.split(',').map(String::from).collect());
+    }
+    if let Some(timeout) = matches.value_of("timeout") {
+        config.timeout = Some(timeout.parse().expect("Invalid timeout value"));
+    }
 
     let (links, ignored_links) = inspect_links(url, show_links, &config, strict)?;
 
     println!("Discovered {} valid links to scan.", links.len());
 
-    let output_format = matches.value_of("output-format").unwrap_or(&config.default_output);
+    let output_format = matches.value_of("output-format").unwrap_or_else(|| {
+        config.default_output.as_deref().unwrap_or("json")
+    });
     let output_file = matches.value_of("output-file").map(String::from).unwrap_or_else(|| {
-        let domain = Url::parse(url).unwrap().domain().unwrap_or("unknown").to_string();
-        format!("inspect-result-{}.{}", domain, output_format)
+        format!(
+            "inspect-result-{}.{}",
+            Url::parse(url).unwrap().domain().unwrap_or("unknown").to_string(),
+            output_format
+        )
     });
 
     match output_format {
@@ -124,26 +200,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn load_config() -> Result<Config, Box<dyn Error>> {
-    let mut file = File::open(".inspector-config.yml")?;
-    let mut contents = String::new();
-    file.read_to_string(&mut contents)?;
-    
-    let mut value: Value = serde_yaml::from_str(&contents)?;
-    
-    // Ensure ignored_childs is a sequence, or set it to an empty vector
-    if let Some(ignored_childs) = value.get_mut("ignored_childs") {
-        if !ignored_childs.is_sequence() {
-            *ignored_childs = Value::Sequence(vec![]);
-        }
-    } else {
-        value["ignored_childs"] = Value::Sequence(vec![]);
-    }
-    
-    let config: Config = serde_yaml::from_value(value)?;
-    Ok(config)
-}
-
+/// Determine if a URL should be ignored based on configuration
 fn should_ignore_url(url: &str, config: &Config, base_url: &str, strict: bool) -> bool {
     let parsed_url = match Url::parse(url) {
         Ok(url) => url,
@@ -159,32 +216,43 @@ fn should_ignore_url(url: &str, config: &Config, base_url: &str, strict: bool) -
         }
     }
 
-    if config.ignore.domains.iter().any(|ignored| domain.ends_with(ignored)) {
-        return true;
-    }
-
-    if config.forbidden_domains.iter().any(|forbidden| domain.ends_with(forbidden)) {
-        return true;
-    }
-
-    if config.ignored_childs.iter().any(|ignored_child| path.starts_with(ignored_child)) {
-        return true;
-    }
-
-    for pattern in &config.ignore.regex {
-        if let Ok(regex) = Regex::new(pattern) {
-            if regex.is_match(url) {
+    if let Some(ignore) = &config.ignore {
+        if let Some(domains) = &ignore.domains {
+            if domains.iter().any(|ignored| domain.ends_with(ignored)) {
                 return true;
             }
+        }
+
+        if let Some(regex_patterns) = &ignore.regex {
+            for pattern in regex_patterns {
+                if let Ok(regex) = Regex::new(pattern) {
+                    if regex.is_match(url) {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+
+    if let Some(forbidden_domains) = &config.forbidden_domains {
+        if forbidden_domains.iter().any(|forbidden| domain.ends_with(forbidden)) {
+            return true;
+        }
+    }
+
+    if let Some(ignored_childs) = &config.ignored_childs {
+        if ignored_childs.iter().any(|ignored_child| path.starts_with(ignored_child)) {
+            return true;
         }
     }
 
     false
 }
 
+/// Inspect links starting from a given URL
 fn inspect_links(url: &str, show_links: bool, config: &Config, strict: bool) -> Result<(Vec<LinkInfo>, Vec<LinkInfo>), Box<dyn Error>> {
     let client = ClientBuilder::new()
-        .timeout(Duration::from_secs(config.timeout))
+        .timeout(Duration::from_secs(config.timeout.unwrap_or(30)))
         .build()?;
     let mut links = Vec::new();
     let mut ignored_links = Vec::new();
@@ -255,6 +323,7 @@ fn inspect_links(url: &str, show_links: bool, config: &Config, strict: bool) -> 
     Ok((links, ignored_links))
 }
 
+/// Output results in JSON format
 fn output_json(links: &[LinkInfo], ignored_links: &[LinkInfo], detailed: bool, output_file: &str) -> Result<(), Box<dyn Error>> {
     let mut output = HashMap::new();
     output.insert("scanned_links", links);
@@ -268,6 +337,7 @@ fn output_json(links: &[LinkInfo], ignored_links: &[LinkInfo], detailed: bool, o
     Ok(())
 }
 
+/// Output results in YAML format
 fn output_yaml(links: &[LinkInfo], ignored_links: &[LinkInfo], detailed: bool, output_file: &str) -> Result<(), Box<dyn Error>> {
     let mut output = HashMap::new();
     output.insert("scanned_links", links);
@@ -281,6 +351,7 @@ fn output_yaml(links: &[LinkInfo], ignored_links: &[LinkInfo], detailed: bool, o
     Ok(())
 }
 
+/// Output results in TXT format
 fn output_txt(links: &[LinkInfo], output_file: &str) -> Result<(), Box<dyn Error>> {
     let content: String = links.iter().map(|link| format!("{}\n", link.url)).collect();
     let mut file = File::create(output_file)?;
@@ -289,10 +360,23 @@ fn output_txt(links: &[LinkInfo], output_file: &str) -> Result<(), Box<dyn Error
     Ok(())
 }
 
+/// Output results to clipboard
 fn output_clipboard(links: &[LinkInfo]) -> Result<(), Box<dyn Error>> {
     let mut ctx: ClipboardContext = ClipboardProvider::new()?;
     let content: String = links.iter().map(|link| format!("{}\n", link.url)).collect();
     ctx.set_contents(content)?;
     println!("Links copied to clipboard");
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_should_ignore_url() {
+        // Add some unit tests for the should_ignore_url function
+    }
+
+    // Add more tests as needed
 }

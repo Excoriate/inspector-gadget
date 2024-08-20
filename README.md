@@ -1,23 +1,19 @@
-# Inspector Gadget
+# Inspector CLI
 
-Inspector Gadget is a command-line tool that inspects all links on a given documentation site, recursively discovering and analyzing child pages. It outputs the results in JSON, YAML, TXT, or a clipboard-friendly format.
+A CLI tool for inspecting and analyzing web links.
 
 ## Installation
 
-To install Inspector Gadget, you need to have Rust and Cargo installed on your system. Then, you can clone this repository and build the project:
+You can install Inspector CLI using Cargo:
 
-```bash
-git clone https://github.com/yourusername/inspector-gadget.git
-cd inspector-gadget
-cargo build --release
 ```
-
-The binary will be available in `target/release/inspector-gadget`.
+cargo install inspector-cli
+```
 
 ## Usage
 
 ```bash
-inspector-gadget <URL> [OPTIONS]
+inspector-cli <URL> [OPTIONS]
 ```
 
 Options:
@@ -32,15 +28,21 @@ Options:
 | `--show-links` | Show links in the terminal |
 | `--detailed` | Show detailed information including ignored links |
 | `--strict` | Only scan links that are under or children of the passed URL |
+| `--config <FILE>` | Sets a custom config file |
+| `--ignore-domains <DOMAINS>` | Comma-separated list of domains to ignore |
+| `--ignore-regex <REGEX>` | Comma-separated list of regex patterns to ignore URLs |
+| `--forbidden-domains <DOMAINS>` | Comma-separated list of forbidden domains |
+| `--ignored-childs <PATHS>` | Comma-separated list of child paths to ignore |
+| `--timeout <SECONDS>` | Timeout in seconds for each HTTP request |
 
 Example:
 ```bash
-inspector-gadget https://docs.dagger.io --show-links --strict --output-format=txt --output-file=dagger-doc-links
+inspector-cli https://docs.dagger.io --show-links --strict --output-format=txt --output-file=dagger-doc-links
 ```
 
 ## Configuration
 
-The inspector-gadget tool uses a YAML configuration file named `.inspector-config.yml` in the same directory as the executable. This file allows you to customize various aspects of the link inspection process.
+The inspector-cli tool uses a YAML configuration file named `.inspector-config.yml` in the user's home directory. This file allows you to customize various aspects of the link inspection process.
 
 Here's a description of the configuration options:
 
@@ -90,4 +92,4 @@ Contributions are welcome! If you find any issues or have suggestions for improv
 
 ## License
 
-Inspector Gadget is licensed under the [MIT License](LICENSE).
+Inspector CLI is licensed under the [MIT License](LICENSE).
