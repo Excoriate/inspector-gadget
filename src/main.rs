@@ -62,12 +62,12 @@ fn load_config(config_path: Option<&str>) -> Result<Config, Box<dyn Error>> {
         let config: Config = serde_yaml::from_str(&config_str)
             .map_err(|e| Box::<dyn Error>::from(format!("Failed to parse config: {}", e)))?;
         
-        // Add debug logging
-        if let Some(ignored_childs) = &config.ignored_childs {
-            println!("Loaded ignored_childs from config: {:?}", ignored_childs);
-        } else {
-            println!("No ignored_childs found in config");
-        }
+        println!("Loaded configuration:");
+        println!("  ignored_childs: {:?}", config.ignored_childs);
+        println!("  forbidden_domains: {:?}", config.forbidden_domains);
+        println!("  ignore: {:?}", config.ignore);
+        println!("  timeout: {:?}", config.timeout);
+        println!("  default_output: {:?}", config.default_output);
         
         Ok(config)
     } else {
@@ -252,14 +252,14 @@ fn should_ignore_url(url: &str, config: &Config, base_url: &str, strict: bool) -
 
     if let Some(ignored_childs) = &config.ignored_childs {
         let base_parsed = Url::parse(base_url).unwrap();
-        let base_path = base_parsed.path();
         for ignored_child in ignored_childs {
-            let full_ignored_path = if base_path.ends_with('/') {
-                format!("{}{}", base_path, ignored_child.trim_start_matches('/'))
+            let full_ignored_path = if base_parsed.path().ends_with('/') {
+                format!("{}{}", base_parsed.path(), ignored_child.trim_start_matches('/'))
             } else {
-                format!("{}/{}", base_path, ignored_child.trim_start_matches('/'))
+                format!("{}/{}", base_parsed.path(), ignored_child.trim_start_matches('/'))
             };
             if path.starts_with(&full_ignored_path) {
+                println!("Ignoring URL due to ignored_childs: {}", url); // Debug print
                 return true;
             }
         }
