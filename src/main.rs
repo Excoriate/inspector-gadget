@@ -21,7 +21,7 @@ use serde_yaml::Value;
 use thiserror::Error;
 
 /// Configuration structure for the Inspector CLI
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 struct Config {
     url: String,
     ignore: Option<IgnoreConfig>,
@@ -97,41 +97,37 @@ fn validate_config(config: &Value) -> Result<(), ConfigError> {
 }
 
 /// Load configuration from a file or use default settings
-fn load_config(config_path: Option<&str>) -> Result<Config, Box<dyn Error>> {
-    let config_path = if let Some(path) = config_path {
-        PathBuf::from(path)
-    } else {
-        dirs::home_dir().unwrap().join(".inspector-config.yml")
-    };
+fn load_config(config_path: Option<&str>) -> Result<Option<Config>, Box<dyn Error>> {
+    if let Some(path) = config_path {
+        let config_path = PathBuf::from(path);
+        println!("Attempting to load config from: {:?}", config_path);
 
-    println!("Attempting to load config from: {:?}", config_path);
-
-    if config_path.exists() {
-        println!("Config file found, reading contents...");
-        let config_str = fs::read_to_string(&config_path)?;
-        println!("Config file contents:\n{}", config_str);
-        
-        // Parse YAML into a serde_yaml::Value for validation
-        let config_value: Value = serde_yaml::from_str(&config_str)?;
-        
-        // Validate the configuration
-        validate_config(&config_value)?;
-        
-        // If validation passes, parse into Config struct
-        let config: Config = serde_yaml::from_str(&config_str)?;
-        
-        println!("Loaded configuration:");
-        println!("  url: {}", config.url);
-        println!("  ignored_childs: {:?}", config.ignored_childs);
-        println!("  forbidden_domains: {:?}", config.forbidden_domains);
-        println!("  ignore: {:?}", config.ignore);
-        println!("  timeout: {:?}", config.timeout);
-        println!("  default_output: {:?}", config.default_output);
-        
-        Ok(config)
+        if config_path.exists() {
+            println!("Config file found, reading contents...");
+            let config_str = fs::read_to_string(&config_path)?;
+            println!("Config file contents:\n{}", config_str);
+            
+            let config_value: Value = serde_yaml::from_str(&config_str)?;
+            validate_config(&config_value)?;
+            
+            let config: Config = serde_yaml::from_str(&config_str)?;
+            
+            println!("Loaded configuration:");
+            println!("  url: {}", config.url);
+            println!("  ignored_childs: {:?}", config.ignored_childs);
+            println!("  forbidden_domains: {:?}", config.forbidden_domains);
+            println!("  ignore: {:?}", config.ignore);
+            println!("  timeout: {:?}", config.timeout);
+            println!("  default_output: {:?}", config.default_output);
+            
+            Ok(Some(config))
+        } else {
+            println!("Config file not found at {:?}", config_path);
+            Err(Box::new(std::io::Error::new(std::io::ErrorKind::NotFound, "Configuration file not found")))
+        }
     } else {
-        println!("Config file not found at {:?}, using default configuration", config_path);
-        Err(Box::new(std::io::Error::new(std::io::ErrorKind::NotFound, "Configuration file not found")))
+        println!("No config file specified, using default configuration");
+        Ok(None)
     }
 }
 
@@ -144,7 +140,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         .about("Inspects links on a documentation site")
         .arg(Arg::with_name("URL")
             .help("The URL of the documentation site")
-            .required(true)
+            .required_unless("config")
             .index(1))
         .arg(Arg::with_name("output-format")
             .long("output-format")
@@ -205,7 +201,16 @@ fn main() -> Result<(), Box<dyn Error>> {
             .takes_value(true))
         .get_matches();
 
-    let url = matches.value_of("URL").unwrap();
+    // Load configuration if a config file is specified
+    let config = load_config(matches.value_of("config"))?;
+
+    // Create a mutable config, either from the loaded config or default
+    let mut config = config.unwrap_or_default();
+
+    // Use URL from command line or config file
+    let url = matches.value_of("URL").or_else(|| Some(&config.url))
+        .ok_or_else(|| Box::new(std::io::Error::new(std::io::ErrorKind::InvalidInput, "URL is required when no config file is provided")))?;
+
     let log_level = matches.value_of("log-level").unwrap();
     let show_links = matches.is_present("show-links");
     let detailed = matches.is_present("detailed");
@@ -214,9 +219,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     std::env::set_var("RUST_LOG", log_level);
 
     info!("Starting link inspection for {}", url);
-
-    // Load configuration
-    let mut config = load_config(matches.value_of("config"))?;
 
     // Override config with command-line arguments
     if let Some(ignore_domains) = matches.value_of("ignore-domains") {

@@ -24,6 +24,7 @@ env_logger = "0.9"
 url = { version = "2.2", features = ["serde"] }
 regex = "1.5"
 dirs = "4.0"
+thiserror = "1.0"
 
 [[bin]]
 name = "inspector-cli"

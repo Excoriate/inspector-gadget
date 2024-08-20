@@ -1,0 +1,31 @@
+# Inspector Configuration File
+
+# Base URL to start the inspection from (required)
+url: 'https://developer.hashicorp.com/terraform/cli'
+
+# Ignore patterns (regex and domains)
+ignore:
+  domains:
+    - 'example.com'
+    - 'ignoreme.com'
+  regex:
+    - '^https?://example\.com'
+
+# Forbidden domains (no scanning of these domains or their subdomains)
+forbidden_domains:
+  - 'facebook.com'
+  - 'twitter.com'
+  - 'instagram.com'
+
+# Ignored child paths (no scanning of these paths or their children)
+ignored_childs:
+  - '/api/reference'
+  - '/api/v2'
+
+# Timeout in seconds
+timeout: 30
+
+# Output configuration
+output:
+  file: 'terraform_links.txt'  # Create a text file for output
+  show_links: true  # Show links while scanning
