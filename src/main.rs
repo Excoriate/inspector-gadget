@@ -57,8 +57,12 @@ fn load_config(config_path: Option<&str>) -> Result<Config, Box<dyn Error>> {
         .map(PathBuf::from)
         .unwrap_or_else(|| dirs::home_dir().unwrap().join(".inspector-config.yml"));
 
+    println!("Attempting to load config from: {:?}", config_path);
+
     if config_path.exists() {
+        println!("Config file found, reading contents...");
         let config_str = fs::read_to_string(&config_path)?;
+        println!("Config file contents:\n{}", config_str);
         let config: Config = serde_yaml::from_str(&config_str)
             .map_err(|e| Box::<dyn Error>::from(format!("Failed to parse config: {}", e)))?;
         
@@ -114,9 +118,6 @@ fn main() -> Result<(), Box<dyn Error>> {
             .long("detailed")
             .short("d")
             .help("Show detailed information including ignored links"))
-        .arg(Arg::with_name("strict")
-            .long("strict")
-            .help("Only scan links that are under or children of the passed URL"))
         .arg(Arg::with_name("config")
             .long("config")
             .value_name("FILE")
@@ -153,7 +154,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     let log_level = matches.value_of("log-level").unwrap();
     let show_links = matches.is_present("show-links");
     let detailed = matches.is_present("detailed");
-    let strict = matches.is_present("strict");
 
     // Set log level
     std::env::set_var("RUST_LOG", log_level);
@@ -180,7 +180,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         config.timeout = Some(timeout.parse().expect("Invalid timeout value"));
     }
 
-    let (links, ignored_links) = inspect_links(url, show_links, &config, strict)?;
+    let (links, ignored_links) = inspect_links(url, show_links, &config)?;
 
     println!("Discovered {} valid links to scan.", links.len());
 
@@ -211,24 +211,32 @@ fn main() -> Result<(), Box<dyn Error>> {
 }
 
 /// Determine if a URL should be ignored based on configuration
-fn should_ignore_url(url: &str, config: &Config, base_url: &str, strict: bool) -> bool {
+fn should_ignore_url(url: &str, config: &Config, base_url: &str) -> bool {
+    println!("Checking URL: {}", url);
     let parsed_url = match Url::parse(url) {
         Ok(url) => url,
-        Err(_) => return true, // Ignore invalid URLs
+        Err(_) => {
+            println!("Invalid URL, ignoring: {}", url);
+            return true;
+        }
     };
+    let base_parsed = Url::parse(base_url).unwrap();
+
+    // Always enforce strict mode
+    if !url.starts_with(base_url) || parsed_url.domain() != base_parsed.domain() {
+        println!("Ignoring due to strict mode: {}", url);
+        return true;
+    }
+
     let domain = parsed_url.domain().unwrap_or("");
     let path = parsed_url.path();
 
-    if strict {
-        let base_parsed = Url::parse(base_url).unwrap();
-        if !url.starts_with(base_url) && parsed_url.domain() != base_parsed.domain() {
-            return true;
-        }
-    }
+    println!("URL domain: {}, path: {}", domain, path);
 
     if let Some(ignore) = &config.ignore {
         if let Some(domains) = &ignore.domains {
             if domains.iter().any(|ignored| domain.ends_with(ignored)) {
+                println!("Ignoring due to ignore domains: {}", url);
                 return true;
             }
         }
@@ -237,6 +245,7 @@ fn should_ignore_url(url: &str, config: &Config, base_url: &str, strict: bool) -
             for pattern in regex_patterns {
                 if let Ok(regex) = Regex::new(pattern) {
                     if regex.is_match(url) {
+                        println!("Ignoring due to ignore regex: {}", url);
                         return true;
                     }
                 }
@@ -246,20 +255,21 @@ fn should_ignore_url(url: &str, config: &Config, base_url: &str, strict: bool) -
 
     if let Some(forbidden_domains) = &config.forbidden_domains {
         if forbidden_domains.iter().any(|forbidden| domain.ends_with(forbidden)) {
+            println!("Ignoring due to forbidden domains: {}", url);
             return true;
         }
     }
 
     if let Some(ignored_childs) = &config.ignored_childs {
-        let base_parsed = Url::parse(base_url).unwrap();
         for ignored_child in ignored_childs {
             let full_ignored_path = if base_parsed.path().ends_with('/') {
                 format!("{}{}", base_parsed.path(), ignored_child.trim_start_matches('/'))
             } else {
                 format!("{}/{}", base_parsed.path(), ignored_child.trim_start_matches('/'))
             };
-            if path.starts_with(&full_ignored_path) {
-                println!("Ignoring URL due to ignored_childs: {}", url); // Debug print
+            println!("Checking against ignored child path: {}", full_ignored_path);
+            if url.starts_with(&(base_parsed.origin().ascii_serialization() + &full_ignored_path)) {
+                println!("Ignoring URL due to ignored_childs: {}", url);
                 return true;
             }
         }
@@ -269,14 +279,14 @@ fn should_ignore_url(url: &str, config: &Config, base_url: &str, strict: bool) -
 }
 
 /// Inspect links starting from a given URL
-fn inspect_links(url: &str, show_links: bool, config: &Config, strict: bool) -> Result<(Vec<LinkInfo>, Vec<LinkInfo>), Box<dyn Error>> {
+fn inspect_links(base_url: &str, show_links: bool, config: &Config) -> Result<(Vec<LinkInfo>, Vec<LinkInfo>), Box<dyn Error>> {
     let client = ClientBuilder::new()
         .timeout(Duration::from_secs(config.timeout.unwrap_or(30)))
         .build()?;
     let mut links = Vec::new();
     let mut ignored_links = Vec::new();
     let mut visited = HashSet::new();
-    let mut to_visit = vec![url.to_string()];
+    let mut to_visit = vec![base_url.to_string()];
 
     while let Some(current_url) = to_visit.pop() {
         if visited.contains(&current_url) {
@@ -285,7 +295,7 @@ fn inspect_links(url: &str, show_links: bool, config: &Config, strict: bool) -> 
 
         visited.insert(current_url.clone());
 
-        if should_ignore_url(&current_url, config, url, strict) {
+        if should_ignore_url(&current_url, config, base_url) {
             ignored_links.push(LinkInfo {
                 url: current_url,
                 status: LinkStatus::Ignored,
