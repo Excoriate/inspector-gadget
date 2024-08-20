@@ -17,10 +17,13 @@ use serde::{Deserialize, Serialize};
 use clipboard::{ClipboardContext, ClipboardProvider};
 use regex::Regex;
 use std::fs;
+use serde_yaml::Value;
+use thiserror::Error;
 
 /// Configuration structure for the Inspector CLI
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Serialize, Deserialize)]
 struct Config {
+    url: String,
     ignore: Option<IgnoreConfig>,
     forbidden_domains: Option<Vec<String>>,
     ignored_childs: Option<Vec<String>>,
@@ -51,11 +54,55 @@ enum LinkStatus {
     Ignored,
 }
 
+#[derive(Error, Debug)]
+enum ConfigError {
+    #[error("Missing required field: {0}")]
+    MissingField(String),
+    #[error("Invalid field type: {0}")]
+    InvalidFieldType(String),
+}
+
+fn validate_config(config: &Value) -> Result<(), ConfigError> {
+    // Check for required fields
+    if !config.get("url").is_some() {
+        return Err(ConfigError::MissingField("url".to_string()));
+    }
+
+    // Validate field types
+    if let Some(url) = config.get("url") {
+        if !url.is_string() {
+            return Err(ConfigError::InvalidFieldType("url must be a string".to_string()));
+        }
+    }
+
+    if let Some(ignore) = config.get("ignore") {
+        if !ignore.is_mapping() {
+            return Err(ConfigError::InvalidFieldType("ignore must be an object".to_string()));
+        }
+        if let Some(domains) = ignore.get("domains") {
+            if !domains.is_sequence() {
+                return Err(ConfigError::InvalidFieldType("ignore.domains must be an array".to_string()));
+            }
+        }
+        if let Some(regex) = ignore.get("regex") {
+            if !regex.is_sequence() {
+                return Err(ConfigError::InvalidFieldType("ignore.regex must be an array".to_string()));
+            }
+        }
+    }
+
+    // Add similar checks for other fields...
+
+    Ok(())
+}
+
 /// Load configuration from a file or use default settings
 fn load_config(config_path: Option<&str>) -> Result<Config, Box<dyn Error>> {
-    let config_path = config_path
-        .map(PathBuf::from)
-        .unwrap_or_else(|| dirs::home_dir().unwrap().join(".inspector-config.yml"));
+    let config_path = if let Some(path) = config_path {
+        PathBuf::from(path)
+    } else {
+        dirs::home_dir().unwrap().join(".inspector-config.yml")
+    };
 
     println!("Attempting to load config from: {:?}", config_path);
 
@@ -63,10 +110,18 @@ fn load_config(config_path: Option<&str>) -> Result<Config, Box<dyn Error>> {
         println!("Config file found, reading contents...");
         let config_str = fs::read_to_string(&config_path)?;
         println!("Config file contents:\n{}", config_str);
-        let config: Config = serde_yaml::from_str(&config_str)
-            .map_err(|e| Box::<dyn Error>::from(format!("Failed to parse config: {}", e)))?;
+        
+        // Parse YAML into a serde_yaml::Value for validation
+        let config_value: Value = serde_yaml::from_str(&config_str)?;
+        
+        // Validate the configuration
+        validate_config(&config_value)?;
+        
+        // If validation passes, parse into Config struct
+        let config: Config = serde_yaml::from_str(&config_str)?;
         
         println!("Loaded configuration:");
+        println!("  url: {}", config.url);
         println!("  ignored_childs: {:?}", config.ignored_childs);
         println!("  forbidden_domains: {:?}", config.forbidden_domains);
         println!("  ignore: {:?}", config.ignore);
@@ -76,7 +131,7 @@ fn load_config(config_path: Option<&str>) -> Result<Config, Box<dyn Error>> {
         Ok(config)
     } else {
         println!("Config file not found at {:?}, using default configuration", config_path);
-        Ok(Config::default())
+        Err(Box::new(std::io::Error::new(std::io::ErrorKind::NotFound, "Configuration file not found")))
     }
 }
 

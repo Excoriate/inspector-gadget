@@ -1,0 +1,29 @@
+# Inspector Configuration File
+
+# Base URL to start the inspection from (required)
+url: 'https://docs.dagger.io'
+
+# Ignore patterns (regex and domains)
+ignore:
+  domains:
+    - 'example.com'
+    - 'ignoreme.com'
+  regex:
+    - '^https?://example\.com'
+
+# Forbidden domains (no scanning of these domains or their subdomains)
+forbidden_domains:
+  - 'facebook.com'
+  - 'twitter.com'
+  - 'instagram.com'
+
+# Ignored child paths (no scanning of these paths or their children)
+ignored_childs:
+  - '/api/reference'
+  - '/api/v2'
+
+# Timeout in seconds
+timeout: 30
+
+# Default behavior: copy links to clipboard if no other output arguments are passed
+default_output: clipboard

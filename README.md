@@ -27,7 +27,6 @@ Options:
 | `--version` | Shows version information |
 | `--show-links` | Show links in the terminal |
 | `--detailed` | Show detailed information including ignored links |
-| `--strict` | Only scan links that are under or children of the passed URL |
 | `--config <FILE>` | Sets a custom config file |
 | `--ignore-domains <DOMAINS>` | Comma-separated list of domains to ignore |
 | `--ignore-regex <REGEX>` | Comma-separated list of regex patterns to ignore URLs |
@@ -37,7 +36,7 @@ Options:
 
 Example:
 ```bash
-inspector-cli https://docs.dagger.io --show-links --strict --output-format=txt --output-file=dagger-doc-links
+inspector-cli https://docs.dagger.io --show-links --output-format=txt --output-file=dagger-doc-links
 ```
 
 ## Configuration
@@ -48,6 +47,7 @@ Here's a description of the configuration options:
 
 | Field | Type | Description |
 |-------|------|-------------|
+| `url` | String | The base URL to start the inspection from (required) |
 | `ignore` | Object | Contains settings for ignoring certain URLs |
 | `ignore.domains` | Array of Strings | List of domain suffixes to ignore |
 | `ignore.regex` | Array of Strings | List of regex patterns to ignore URLs |
@@ -59,6 +59,7 @@ Here's a description of the configuration options:
 ### Example Configuration
 
 ```yaml
+url: https://docs.dagger.io
 ignore:
   domains:
     - "example.com"
@@ -76,15 +77,11 @@ timeout: 30
 default_output: "json"
 ```
 
-In this example:
-- URLs from domains ending with "example.com" or "test.org" will be ignored.
-- URLs matching the regex patterns (localhost or 127.0.0.1) will be ignored.
-- URLs from domains ending with "forbidden.com" or "restricted.org" are forbidden to scan.
-- URLs with paths starting with "/api/" or "/internal/" will be ignored.
-- Each HTTP request will timeout after 30 seconds.
-- The default output format is set to JSON if not specified in the CLI arguments.
+You can use a custom configuration file by specifying its path:
 
-You can customize these settings to fit your specific link inspection needs.
+```bash
+inspector-cli https://example.com --config /path/to/custom-config.yml
+```
 
 ## Contributing
 
