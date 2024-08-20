@@ -4,18 +4,21 @@ use scraper::{Html, Selector};
 use std::collections::{HashSet, HashMap};
 use std::error::Error;
 use std::fs::File;
-use std::io::Read;
+use std::io::{Read, Write};
 use std::time::Duration;
 use log::{info, error};
 use url::Url;
 use serde::{Serialize, Deserialize};
 use clipboard::{ClipboardContext, ClipboardProvider};
 use regex::Regex;
+use serde_yaml::Value;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Config {
     ignore: IgnoreConfig,
     forbidden_domains: Vec<String>,
+    #[serde(default)]
+    ignored_childs: Vec<String>,
     timeout: u64,
     default_output: String,
 }
@@ -52,27 +55,34 @@ fn main() -> Result<(), Box<dyn Error>> {
             .index(1))
         .arg(Arg::with_name("output-format")
             .long("output-format")
+            .short("o")
             .value_name("FORMAT")
-            .help("Output format: json, yaml, or clipboard")
+            .help("Output format: json, yaml, txt, or clipboard")
+            .takes_value(true))
+        .arg(Arg::with_name("output-file")
+            .long("output-file")
+            .short("f")
+            .value_name("FILE")
+            .help("Output file name (default: inspect-result-<domain>.<format>)")
             .takes_value(true))
         .arg(Arg::with_name("log-level")
             .long("log-level")
+            .short("l")
             .value_name("LEVEL")
             .help("Log level: info, debug, or error")
             .takes_value(true)
             .default_value("info"))
         .arg(Arg::with_name("show-links")
             .long("show-links")
-            .help("Show links in the terminal")
-            .takes_value(false))
+            .short("s")
+            .help("Show links in the terminal"))
         .arg(Arg::with_name("detailed")
             .long("detailed")
-            .help("Show detailed information including ignored links")
-            .takes_value(false))
+            .short("d")
+            .help("Show detailed information including ignored links"))
         .arg(Arg::with_name("strict")
             .long("strict")
-            .help("Only scan links that are under or children of the passed URL")
-            .takes_value(false))
+            .help("Only scan links that are under or children of the passed URL"))
         .get_matches();
 
     let url = matches.value_of("URL").unwrap();
@@ -94,9 +104,15 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("Discovered {} valid links to scan.", links.len());
 
     let output_format = matches.value_of("output-format").unwrap_or(&config.default_output);
+    let output_file = matches.value_of("output-file").map(String::from).unwrap_or_else(|| {
+        let domain = Url::parse(url).unwrap().domain().unwrap_or("unknown").to_string();
+        format!("inspect-result-{}.{}", domain, output_format)
+    });
+
     match output_format {
-        "json" => output_json(&links, &ignored_links, detailed)?,
-        "yaml" => output_yaml(&links, &ignored_links, detailed)?,
+        "json" => output_json(&links, &ignored_links, detailed, &output_file)?,
+        "yaml" => output_yaml(&links, &ignored_links, detailed, &output_file)?,
+        "txt" => output_txt(&links, &output_file)?,
         "clipboard" => output_clipboard(&links)?,
         _ => error!("Invalid output format"),
     }
@@ -112,7 +128,19 @@ fn load_config() -> Result<Config, Box<dyn Error>> {
     let mut file = File::open(".inspector-config.yml")?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
-    let config: Config = serde_yaml::from_str(&contents)?;
+    
+    let mut value: Value = serde_yaml::from_str(&contents)?;
+    
+    // Ensure ignored_childs is a sequence, or set it to an empty vector
+    if let Some(ignored_childs) = value.get_mut("ignored_childs") {
+        if !ignored_childs.is_sequence() {
+            *ignored_childs = Value::Sequence(vec![]);
+        }
+    } else {
+        value["ignored_childs"] = Value::Sequence(vec![]);
+    }
+    
+    let config: Config = serde_yaml::from_value(value)?;
     Ok(config)
 }
 
@@ -122,6 +150,7 @@ fn should_ignore_url(url: &str, config: &Config, base_url: &str, strict: bool) -
         Err(_) => return true, // Ignore invalid URLs
     };
     let domain = parsed_url.domain().unwrap_or("");
+    let path = parsed_url.path();
 
     if strict {
         let base_parsed = Url::parse(base_url).unwrap();
@@ -135,6 +164,10 @@ fn should_ignore_url(url: &str, config: &Config, base_url: &str, strict: bool) -
     }
 
     if config.forbidden_domains.iter().any(|forbidden| domain.ends_with(forbidden)) {
+        return true;
+    }
+
+    if config.ignored_childs.iter().any(|ignored_child| path.starts_with(ignored_child)) {
         return true;
     }
 
@@ -222,25 +255,37 @@ fn inspect_links(url: &str, show_links: bool, config: &Config, strict: bool) -> 
     Ok((links, ignored_links))
 }
 
-fn output_json(links: &[LinkInfo], ignored_links: &[LinkInfo], detailed: bool) -> Result<(), Box<dyn Error>> {
+fn output_json(links: &[LinkInfo], ignored_links: &[LinkInfo], detailed: bool, output_file: &str) -> Result<(), Box<dyn Error>> {
     let mut output = HashMap::new();
     output.insert("scanned_links", links);
     if detailed {
         output.insert("ignored_links", ignored_links);
     }
     let json = serde_json::to_string_pretty(&output)?;
-    println!("{}", json);
+    let mut file = File::create(output_file)?;
+    file.write_all(json.as_bytes())?;
+    println!("JSON output written to {}", output_file);
     Ok(())
 }
 
-fn output_yaml(links: &[LinkInfo], ignored_links: &[LinkInfo], detailed: bool) -> Result<(), Box<dyn Error>> {
+fn output_yaml(links: &[LinkInfo], ignored_links: &[LinkInfo], detailed: bool, output_file: &str) -> Result<(), Box<dyn Error>> {
     let mut output = HashMap::new();
     output.insert("scanned_links", links);
     if detailed {
         output.insert("ignored_links", ignored_links);
     }
     let yaml = serde_yaml::to_string(&output)?;
-    println!("{}", yaml);
+    let mut file = File::create(output_file)?;
+    file.write_all(yaml.as_bytes())?;
+    println!("YAML output written to {}", output_file);
+    Ok(())
+}
+
+fn output_txt(links: &[LinkInfo], output_file: &str) -> Result<(), Box<dyn Error>> {
+    let content: String = links.iter().map(|link| format!("{}\n", link.url)).collect();
+    let mut file = File::create(output_file)?;
+    file.write_all(content.as_bytes())?;
+    println!("TXT output written to {}", output_file);
     Ok(())
 }
 
