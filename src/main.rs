@@ -58,10 +58,20 @@ fn load_config(config_path: Option<&str>) -> Result<Config, Box<dyn Error>> {
         .unwrap_or_else(|| dirs::home_dir().unwrap().join(".inspector-config.yml"));
 
     if config_path.exists() {
-        let config_str = fs::read_to_string(config_path)?;
-        let config = serde_yaml::from_str(&config_str).map_err(|e| e.into())?;
+        let config_str = fs::read_to_string(&config_path)?;
+        let config: Config = serde_yaml::from_str(&config_str)
+            .map_err(|e| Box::<dyn Error>::from(format!("Failed to parse config: {}", e)))?;
+        
+        // Add debug logging
+        if let Some(ignored_childs) = &config.ignored_childs {
+            println!("Loaded ignored_childs from config: {:?}", ignored_childs);
+        } else {
+            println!("No ignored_childs found in config");
+        }
+        
         Ok(config)
     } else {
+        println!("Config file not found at {:?}, using default configuration", config_path);
         Ok(Config::default())
     }
 }
@@ -241,8 +251,17 @@ fn should_ignore_url(url: &str, config: &Config, base_url: &str, strict: bool) -
     }
 
     if let Some(ignored_childs) = &config.ignored_childs {
-        if ignored_childs.iter().any(|ignored_child| path.starts_with(ignored_child)) {
-            return true;
+        let base_parsed = Url::parse(base_url).unwrap();
+        let base_path = base_parsed.path();
+        for ignored_child in ignored_childs {
+            let full_ignored_path = if base_path.ends_with('/') {
+                format!("{}{}", base_path, ignored_child.trim_start_matches('/'))
+            } else {
+                format!("{}/{}", base_path, ignored_child.trim_start_matches('/'))
+            };
+            if path.starts_with(&full_ignored_path) {
+                return true;
+            }
         }
     }
 
