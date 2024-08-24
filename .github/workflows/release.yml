@@ -1,35 +1,49 @@
-name: Release
+name: 🚀 Release
 
 on:
   push:
     tags:
       - 'v*'
 
+env:
+  CARGO_TERM_COLOR: always
+  RUST_VERSION: 1.67.0
+
 jobs:
   create_release:
-    name: Create Release
+    name: 📦 Create Release
     runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-      - name: Create Release
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🏷️ Create Release
         id: create_release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
+          release_name: 🎉 Release ${{ github.ref }}
           draft: false
           prerelease: false
 
+      - name: 🎉 Release Creation Success
+        if: success()
+        run: echo "::notice::✅ GitHub Release created successfully!"
+
+      - name: ❌ Release Creation Failure
+        if: failure()
+        run: echo "::error::💥 Failed to create GitHub Release. Please check the logs for details."
+
   build_and_upload:
-    name: Build and Upload Release Asset
+    name: 🛠️ Build and Upload Release Asset
     needs: create_release
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macOS-latest]
         include:
           - os: ubuntu-latest
             artifact_name: inspector-gadget-cli
@@ -41,11 +55,28 @@ jobs:
             artifact_name: inspector-gadget-cli
             asset_name: inspector-gadget-cli-macos-amd64
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-      - name: Build project
-        run: cargo build --release
-      - name: Upload Release Asset
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🦀 Setup Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
+      - name: 📦 Install dependencies (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxcb-shape0-dev libxcb-xfixes0-dev
+          echo "✅ Dependencies installed successfully"
+
+      - name: 🔨 Build project
+        run: |
+          echo "🏗️ Building release artifact..."
+          cargo build --release --verbose
+          echo "✅ Build completed successfully"
+
+      - name: 📤 Upload Release Asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -54,3 +85,46 @@ jobs:
           asset_path: ./target/release/${{ matrix.artifact_name }}
           asset_name: ${{ matrix.asset_name }}
           asset_content_type: application/octet-stream
+
+      - name: 🎉 Asset Upload Success
+        if: success()
+        run: echo "::notice::✅ Release asset uploaded successfully!"
+
+      - name: ❌ Asset Upload Failure
+        if: failure()
+        run: echo "::error::💥 Failed to upload release asset. Please check the logs for details."
+
+  publish_crate:
+    name: 📢 Publish to crates.io
+    needs: [create_release, build_and_upload]
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🦀 Setup Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
+      - name: 📦 Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxcb-shape0-dev libxcb-xfixes0-dev
+          echo "✅ Dependencies installed successfully"
+
+      - name: 🚀 Publish to crates.io
+        uses: actions-rs/cargo@v1
+        with:
+          command: publish
+          args: --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: 🎉 Publish Success Notification
+        if: success()
+        run: |
+          echo "::notice::🎊 Successfully published to crates.io!"
+
+      - name: ❌ Publish Failure Notification
+        if: failure()
+        run: |
+          echo "::error::💥 Failed to publish to crates.io. Please check the logs for details."
