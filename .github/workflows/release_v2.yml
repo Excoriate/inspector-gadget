@@ -54,18 +54,20 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
           targets: ${{ matrix.target }}
 
-      - name: 📦 Install dependencies (Linux)
+      - name: 📦 Install cross (Linux)
         if: matrix.os == 'ubuntu-latest'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y musl-tools libssl-dev pkg-config
+        run: cargo install cross
 
-      - name: 🔨 Build
+      - name: 🔨 Build (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: cross build --release --target ${{ matrix.target }}
+
+      - name: 🔨 Build (macOS and Windows)
+        if: matrix.os != 'ubuntu-latest'
         uses: actions-rs/cargo@v1
         with:
-          use-cross: true
           command: build
-          args: --verbose --release --target ${{ matrix.target }}
+          args: --release --target ${{ matrix.target }}
 
       - name: 📦 Package
         shell: bash
