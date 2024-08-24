@@ -73,3 +73,31 @@ docker-ci:
 fix:
     cargo fix --allow-dirty
     cargo fmt
+
+# Install the CLI using the install.sh script
+install-cli:
+    @echo "Installing CLI using install.sh script..."
+    @curl -fsSL https://raw.githubusercontent.com/your-repo/install.sh | sh
+
+# Install the CLI using the install.sh script locally
+install-cli-local *version:
+    @echo "Installing CLI using install.sh script..."
+    @echo "Version: {{version}}"
+    @if [ -f ./install/install.sh ]; then \
+        chmod +x ./install/install.sh && \
+        INSPECTOR_GADGET_VERSION={{version}} ./install/install.sh; \
+    else \
+        echo "Error: install.sh script not found in ./install directory"; \
+        exit 1; \
+    fi
+    @echo "Verifying installation..."
+    @if command -v inspector-gadget-cli >/dev/null 2>&1; then \
+        echo "inspector-gadget-cli is installed at: $(which inspector-gadget-cli)"; \
+        echo "File type: $(file $(which inspector-gadget-cli))"; \
+        echo "File content:"; \
+        cat $(which inspector-gadget-cli); \
+        inspector-gadget-cli --version || echo "Failed to run --version"; \
+    else \
+        echo "Error: inspector-gadget-cli not found in PATH"; \
+        exit 1; \
+    fi

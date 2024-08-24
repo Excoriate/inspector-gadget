@@ -6,25 +6,19 @@ A powerful CLI tool for inspecting and analyzing web links. Handy when it comes 
 
 ## Installation
 
-You can install Inspector Gadget CLI by downloading the pre-built binary for your operating system from the [latest release](https://github.com/Excoriate/inspector-gadget-cli/releases/latest) page.
+You can install the Inspector Gadget CLI using our installation script:
 
-### Linux and macOS
+```bash
+curl -L https://raw.githubusercontent.com/Excoriate/inspector-gadget-cli/main/install/install.sh | sh
+```
 
-1. Download the appropriate binary for your system (e.g., `inspector-gadget-cli-linux-amd64` for Linux or `inspector-gadget-cli-macos-amd64` for macOS).
-2. Make the binary executable:
-   ```
-   chmod +x inspector-gadget-cli-*
-   ```
-3. Move the binary to a directory in your PATH, for example:
-   ```
-   sudo mv inspector-gadget-cli-* /usr/local/bin/inspector
-   ```
+By default, this will install the latest version. If you want to install a specific version, you can use:
 
-### Windows
+```bash
+curl -L https://raw.githubusercontent.com/Excoriate/inspector-gadget-cli/main/install/install.sh | INSPECTOR_GADGET_VERSION=v0.0.1 sh
+```
 
-1. Download the Windows binary (`inspector-gadget-cli-windows-amd64.exe`).
-2. Rename it to `inspector.exe` for convenience.
-3. Move the executable to a directory in your PATH or create a new directory and add it to your PATH.
+The CLI will be installed in `/usr/local/bin`.
 
 ## Usage
 

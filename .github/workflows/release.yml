@@ -24,7 +24,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.get_tag.outputs.tag }}
-      tag_exists: ${{ steps.check_tag.outputs.tag_exists }}
       release_exists: ${{ steps.check_release.outputs.release_exists }}
     steps:
       - name: 🏷️ Get tag
@@ -93,7 +92,7 @@ jobs:
             artifact_name: inspector-gadget-cli
             asset_name: inspector-gadget-cli-macos-amd64
     steps:
-      - name: 📥 Checkout repository
+      - name: ���� Checkout repository
         uses: actions/checkout@v4
 
       - name: 🦀 Setup Rust toolchain
