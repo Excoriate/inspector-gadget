@@ -84,13 +84,13 @@ jobs:
         include:
           - os: ubuntu-latest
             artifact_name: inspector-gadget
-            asset_name: inspector-gadget-cli-linux-amd64
+            asset_name: inspector-gadget-linux-amd64
           - os: windows-latest
             artifact_name: inspector-gadget.exe
-            asset_name: inspector-gadget-cli-windows-amd64.exe
+            asset_name: inspector-gadget-windows-amd64.exe
           - os: macOS-latest
             artifact_name: inspector-gadget
-            asset_name: inspector-gadget-cli-macos-amd64
+            asset_name: inspector-gadget-macos-amd64
     steps:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
