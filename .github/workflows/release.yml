@@ -113,6 +113,7 @@ jobs:
           echo "LD_LIBRARY_PATH=/usr/local/lib:/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH" >> $GITHUB_ENV
 
       - name: 🔨 Build project
+        shell: bash
         run: |
           if [ "${{ matrix.target }}" != "" ]; then
             cargo build --release --verbose --target ${{ matrix.target }}
@@ -124,6 +125,7 @@ jobs:
           PKG_CONFIG_PATH: ${{ matrix.os == 'ubuntu-latest' && '/usr/lib/x86_64-linux-gnu/pkgconfig:$PKG_CONFIG_PATH' || '' }}
 
       - name: 📋 List target directory
+        shell: bash
         run: |
           if [ "${{ matrix.target }}" != "" ]; then
             ls -R ./target/${{ matrix.target }}/release
