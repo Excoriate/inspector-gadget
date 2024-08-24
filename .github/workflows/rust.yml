@@ -10,8 +10,35 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build-and-test:
-    name: 🏗️ Build and Test
+  compile:
+    name: 🔨 Compile
+    runs-on: ubuntu-latest
+    steps:
+    - name: 📥 Checkout repository
+      uses: actions/checkout@v4
+
+    - name: 🛠️ Setup Rust toolchain
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+
+    - name: 📦 Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libxcb-shape0-dev libxcb-xfixes0-dev
+      
+    - name: 🔨 Compile project
+      run: cargo build --verbose
+
+    - name: 🎉 Compile Success Notification
+      if: success()
+      run: echo "::notice::✅ Project compiled successfully!"
+
+    - name: ❌ Compile Failure Notification
+      if: failure()
+      run: echo "::error::💥 Project compilation failed. Please review the logs for details."
+
+  static_checks:
+    name: 🔍 Static Checks
+    needs: compile
     runs-on: ubuntu-latest
     steps:
     - name: 📥 Checkout repository
@@ -22,38 +49,24 @@ jobs:
       with:
         components: rustfmt, clippy
 
-    - name: 📦 Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libxcb-shape0-dev libxcb-xfixes0-dev
-      
-    - name: 🔨 Build project
-      run: cargo build --verbose
-      
-    - name: 🧪 Run tests
-      run: cargo test --verbose
-      
-    - name: 🔍 Run Clippy
-      run: cargo clippy -- -D warnings
-      
     - name: 💅 Check formatting
       run: cargo fmt -- --check
 
-    - name: 🎉 CI Success Notification
+    - name: 🔍 Run Clippy
+      run: cargo clippy -- -D warnings
+
+    - name: 🎉 Static Checks Success Notification
       if: success()
-      run: |
-        echo "::notice::✅ CI checks passed successfully!"
+      run: echo "::notice::✅ Static checks passed successfully!"
 
-    - name: ❌ CI Failure Notification
+    - name: ❌ Static Checks Failure Notification
       if: failure()
-      run: |
-        echo "::error::💥 CI checks failed. Please review the logs for details."
+      run: echo "::error::💥 Static checks failed. Please review the logs for details."
 
-  publish:
-    name: 📢 Publish to crates.io
-    needs: build-and-test
+  test:
+    name: 🧪 Test
+    needs: static_checks
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
     - name: 📥 Checkout repository
       uses: actions/checkout@v4
@@ -61,23 +74,27 @@ jobs:
     - name: 🛠️ Setup Rust toolchain
       uses: actions-rust-lang/setup-rust-toolchain@v1
 
-    - name: 🔑 Login to crates.io
-      uses: actions-rs/cargo@v1
-      with:
-        command: login
-        args: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+    - name: 📦 Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libxcb-shape0-dev libxcb-xfixes0-dev
 
-    - name: 🚀 Publish to crates.io
-      uses: actions-rs/cargo@v1
-      with:
-        command: publish
+    - name: 🧪 Run unit tests
+      run: cargo test --verbose
 
-    - name: 🎉 Publish Success Notification
+    - name: 🧪 Run functional tests
+      run: |
+        if [ -f justfile ]; then
+          curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to ~/.local/bin
+          ~/.local/bin/just ci
+        else
+          echo "No justfile found, skipping functional tests"
+        fi
+
+    - name: 🎉 Test Success Notification
       if: success()
-      run: |
-        echo "::notice::🎊 Successfully published to crates.io!"
+      run: echo "::notice::✅ All tests passed successfully!"
 
-    - name: ❌ Publish Failure Notification
+    - name: ❌ Test Failure Notification
       if: failure()
-      run: |
-        echo "::error::💥 Failed to publish to crates.io. Please check the logs for details."
+      run: echo "::error::💥 Tests failed. Please review the logs for details."
