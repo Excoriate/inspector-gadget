@@ -132,3 +132,8 @@ compile-and-run *args:
     cargo build --release
     @echo "Running inspector-gadget-cli..."
     ./target/release/inspector-gadget {{args}}
+
+# Install Inspector Gadget CLI from source
+install-from-source VERSION="latest":
+    @echo "Installing Inspector Gadget CLI from source..."
+    @bash scripts/install_from_source.sh {{VERSION}}
