@@ -7,128 +7,38 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  RUST_VERSION: 1.67.0
 
 jobs:
-  create_release:
-    name: 📦 Create Release
-    runs-on: ubuntu-latest
-    outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
-    steps:
-      - name: 📥 Checkout repository
-        uses: actions/checkout@v4
-
-      - name: 🏷️ Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: 🎉 Release ${{ github.ref }}
-          draft: false
-          prerelease: false
-
-  build_and_upload:
-    name: 🛠️ Build and Upload Release Asset
-    needs: create_release
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-            artifact_name: inspector-gadget-cli
-            asset_name: inspector-gadget-cli-linux-amd64
-          - os: windows-latest
-            artifact_name: inspector-gadget-cli.exe
-            asset_name: inspector-gadget-cli-windows-amd64.exe
-          - os: macOS-latest
-            artifact_name: inspector-gadget-cli
-            asset_name: inspector-gadget-cli-macos-amd64
-    steps:
-      - name: 📥 Checkout repository
-        uses: actions/checkout@v4
-
-      - name: 🦀 Setup Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
-          components: rustfmt, clippy
-
-      - name: 📦 Install dependencies (Ubuntu)
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libxcb-shape0-dev libxcb-xfixes0-dev libxcb-randr0-dev libxcb-image0-dev libxcb-keysyms1-dev libxcb-xtest0-dev libasound2-dev libpcap-dev pkg-config
-          echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-
-      - name: 🔍 Debug library paths
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          ls -l /usr/lib/x86_64-linux-gnu/libxcb*
-          pkg-config --libs xcb
-          pkg-config --libs xcb-shape
-          pkg-config --libs xcb-xfixes
-
-      - name: 🔨 Build project
-        run: |
-          cargo build --release --verbose
-        env:
-          RUSTFLAGS: "-C link-arg=-Wl,-rpath,/usr/lib/x86_64-linux-gnu"
-
-      - name: 📤 Upload Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: ./target/release/${{ matrix.artifact_name }}
-          asset_name: ${{ matrix.asset_name }}
-          asset_content_type: application/octet-stream
-
   publish:
-    name: 📢 Publish
-    needs: [create_release, build_and_upload]
+    name: 📢 Publish to crates.io
     runs-on: ubuntu-latest
     steps:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
 
       - name: 🦀 Setup Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+        uses: actions-rs/toolchain@v1
         with:
-          toolchain: ${{ env.RUST_VERSION }}
-          components: rustfmt, clippy
+          toolchain: stable
+          override: true
 
       - name: 📦 Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libxcb-shape0-dev libxcb-xfixes0-dev libxcb-randr0-dev libxcb-image0-dev libxcb-keysyms1-dev libxcb-xtest0-dev libasound2-dev libpcap-dev pkg-config
-          echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          sudo apt-get install -y libxcb-shape0-dev libxcb-xfixes0-dev libxcb-randr0-dev libxcb-image0-dev libxcb-keysyms1-dev libxcb-xtest0-dev libasound2-dev libpcap-dev
 
       - name: 🔍 Debug library paths
         run: |
           ls -l /usr/lib/x86_64-linux-gnu/libxcb*
-          pkg-config --libs xcb
-          pkg-config --libs xcb-shape
-          pkg-config --libs xcb-xfixes
-
-      - name: 🔧 Install cargo-release
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-release
+          pkg-config --libs xcb || echo "pkg-config for xcb failed"
+          pkg-config --libs xcb-shape || echo "pkg-config for xcb-shape failed"
+          pkg-config --libs xcb-xfixes || echo "pkg-config for xcb-xfixes failed"
 
       - name: 🚀 Publish to crates.io
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-          RUSTFLAGS: "-C link-arg=-Wl,-rpath,/usr/lib/x86_64-linux-gnu"
-        run: |
-          git config --global user.email "github-actions@github.com"
-          git config --global user.name "GitHub Actions"
-          cargo release publish --execute --no-confirm --no-push --no-tag --allow-branch '*'
+        uses: actions-rs/cargo@v1
+        with:
+          command: publish
+          args: --token ${{ secrets.CRATES_TOKEN }}
 
       - name: 🎉 Publish Success Notification
         if: success()
