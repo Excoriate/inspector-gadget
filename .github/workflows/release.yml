@@ -19,7 +19,7 @@ permissions:
   packages: write
 
 jobs:
-  check_tag_and_release:
+  check_release:
     name: 🔍 Check Tag and Release
     runs-on: ubuntu-latest
     outputs:
@@ -109,11 +109,10 @@ jobs:
           echo "LD_LIBRARY_PATH=/usr/local/lib:/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH" >> $GITHUB_ENV
 
       - name: 🔨 Build project
-        run: |
-          cargo build --release --verbose
+        run: cargo build --release --verbose
         env:
-          RUSTFLAGS: "-C link-arg=-Wl,-rpath,/usr/lib/x86_64-linux-gnu"
-          PKG_CONFIG_PATH: "/usr/lib/x86_64-linux-gnu/pkgconfig:$PKG_CONFIG_PATH"
+          RUSTFLAGS: ${{ matrix.os == 'ubuntu-latest' && '-C link-arg=-Wl,-rpath,/usr/lib/x86_64-linux-gnu' || '' }}
+          PKG_CONFIG_PATH: ${{ matrix.os == 'ubuntu-latest' && '/usr/lib/x86_64-linux-gnu/pkgconfig:$PKG_CONFIG_PATH' || '' }}
 
       - name: 📤 Upload Release Asset
         uses: actions/upload-release-asset@v1
