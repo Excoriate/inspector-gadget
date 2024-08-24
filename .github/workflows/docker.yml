@@ -1,0 +1,49 @@
+name: 🐳 Docker CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  docker-ci:
+    name: 🐳 Docker Build and Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🐳 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🏗️ Build Docker image
+        run: |
+          echo "🔨 Building Docker image..."
+          docker build -t inspector-cli .
+          echo "✅ Docker image built successfully"
+
+      - name: 🧪 Test Docker image
+        run: |
+          echo "🏃‍♂️ Running CLI in Docker container..."
+          docker run --rm inspector-cli --help
+          echo "✅ Docker image test passed"
+
+      - name: 🚀 Run CLI tests in Docker
+        run: |
+          echo "🏃‍♂️ Running CLI tests in Docker container..."
+          docker run --rm inspector-cli sh -c "just test-cli-terragrunt"
+          echo "✅ CLI tests in Docker completed successfully"
+
+      - name: 🎉 Docker CI Success Notification
+        if: success()
+        run: |
+          echo "::notice::🎊 Docker CI checks passed successfully!"
+
+      - name: ❌ Docker CI Failure Notification
+        if: failure()
+        run: |
+          echo "::error::💥 Docker CI checks failed. Please review the logs for details."
