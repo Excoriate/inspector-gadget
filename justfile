@@ -79,9 +79,9 @@ install-cli:
     @echo "Installing CLI using install.sh script..."
     @curl -fsSL https://raw.githubusercontent.com/your-repo/install.sh | sh
 
-# Install the CLI using the install.sh script locally
+# Install the CLI using the local install.sh script
 install-cli-local *version:
-    @echo "Installing CLI using install.sh script..."
+    @echo "Installing CLI using local install.sh script..."
     @echo "Version: {{version}}"
     @if [ -f ./install/install.sh ]; then \
         chmod +x ./install/install.sh && \

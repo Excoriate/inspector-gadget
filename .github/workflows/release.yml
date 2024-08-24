@@ -126,31 +126,6 @@ jobs:
           asset_name: ${{ matrix.asset_name }}
           asset_content_type: application/octet-stream
 
-  update_readme:
-    name: 📝 Update README
-    needs: [check_release, create_release, build_and_upload]
-    if: needs.check_release.outputs.release_exists == 'false'
-    runs-on: ubuntu-latest
-    steps:
-      - name: 📥 Checkout repository
-        uses: actions/checkout@v4
-
-      - name: 🔄 Update README with new version
-        run: |
-          sed -i 's/v[0-9]\+\.[0-9]\+\.[0-9]\+/${{ needs.check_release.outputs.tag }}/g' README.md
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git commit -am "Update README for ${{ needs.check_release.outputs.tag }}"
-          git push
-
-      - name: 🎉 Release Success Notification
-        if: success()
-        run: echo "::notice::🎊 Successfully released new version and updated README!"
-
-      - name: ❌ Release Failure Notification
-        if: failure()
-        run: echo "::error::💥 Failed to release new version or update README. Please check the logs for details."
-
   notify_existing_release:
     name: 📢 Notify Existing Release
     needs: check_release
