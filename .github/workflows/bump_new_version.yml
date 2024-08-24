@@ -24,7 +24,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.PAT_GITHUB }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 🔍 Check if tag exists
         id: check_tag
@@ -42,32 +43,14 @@ jobs:
           git tag -a ${{ github.event.inputs.new_version }} -m "🚀 Bump version to ${{ github.event.inputs.new_version }}"
           git push origin ${{ github.event.inputs.new_version }}
         env:
-          GITHUB_TOKEN: ${{ secrets.PAT_GITHUB }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 🎉 Version Bump Success Notification
         if: success()
-        run: echo "::notice::✅ Successfully bumped version to ${{ github.event.inputs.new_version }}!"
+        run: |
+          echo "::notice::✅ Successfully bumped version to ${{ github.event.inputs.new_version }}!"
 
       - name: ❌ Version Bump Failure Notification
         if: failure()
-        run: echo "::error::💥 Failed to bump version to ${{ github.event.inputs.new_version }}. Please review the logs for details."
-
-      - name: 📢 Notify Slack on success
-        if: success()
-        uses: 8398a7/action-slack@v3
-        with:
-          status: ${{ job.status }}
-          text: "🎉 Successfully bumped version to ${{ github.event.inputs.new_version }} 🚀"
-          fields: repo,message,commit,author,action,eventName,ref,workflow
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
-
-      - name: 📢 Notify Slack on failure
-        if: failure()
-        uses: 8398a7/action-slack@v3
-        with:
-          status: ${{ job.status }}
-          text: "❌ Failed to bump version to ${{ github.event.inputs.new_version }} 💥"
-          fields: repo,message,commit,author,action,eventName,ref,workflow
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+        run: |
+          echo "::error::💥 Failed to bump version to ${{ github.event.inputs.new_version }}. Please review the logs for details."
