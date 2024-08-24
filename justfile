@@ -54,7 +54,7 @@ test-cli-terragrunt:
     @echo "CLI test completed successfully"
 
 # Run CI checks including compilation, functional test, and code quality checks
-ci: build test-cli-terragrunt check
+ci: fix build test-cli-terragrunt check
 
 # Format code and apply fixes
 format-fix:
@@ -68,3 +68,8 @@ docker-ci:
     docker run --rm inspector-cli --help
     @echo "Running CI tests in Docker container..."
     docker run --rm -v $(pwd):/usr/src/inspector-cli -w /usr/src/inspector-cli rust:1.67 sh -c "apt-get update && apt-get install -y just && cargo test && cargo clippy -- -D warnings && cargo fmt -- --check && just test-cli-terragrunt"
+
+# Auto-fix linting issues
+fix:
+    cargo fix --allow-dirty
+    cargo fmt

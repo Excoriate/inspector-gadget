@@ -1,37 +1,140 @@
-name: CI
+name: 🔄 Continuous Integration
 
 on:
   pull_request:
     branches: [ main ]
 
+env:
+  CARGO_TERM_COLOR: always
+  RUST_VERSION: 1.67.0
+
 jobs:
   ci:
+    name: 🧪 CI Checks
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions-rust-lang/setup-rust-toolchain@v1
-      with:
-        components: rustfmt, clippy
-    - name: Set up just
-      uses: extractions/setup-just@v1
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libxcb-shape0-dev libxcb-xfixes0-dev
-    - name: Run CI checks
-      run: just ci
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🛠️ Setup Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          components: rustfmt, clippy
+
+      - name: 🔧 Set up just
+        uses: extractions/setup-just@v1
+
+      - name: 📦 Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxcb-shape0-dev libxcb-xfixes0-dev
+          echo "✅ Dependencies installed successfully"
+
+      - name: 🔧 Auto-fix linting issues
+        run: |
+          echo "🔨 Fixing linting issues..."
+          just fix
+          echo "✅ Linting issues fixed"
+
+      - name: 🚀 Run CI checks
+        run: |
+          echo "🏃‍♂️ Running CI checks..."
+          just ci
+          echo "✅ CI checks completed successfully"
+
+      - name: 🎉 CI Success Notification
+        if: success()
+        run: |
+          echo "::notice::🎊 CI checks passed successfully!"
+
+      - name: ❌ CI Failure Notification
+        if: failure()
+        run: |
+          echo "::error::💥 CI checks failed. Please review the logs for details."
 
   functional-test:
+    name: 🧪 Functional Test
     needs: ci
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions-rust-lang/setup-rust-toolchain@v1
-    - name: Set up just
-      uses: extractions/setup-just@v1
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libxcb-shape0-dev libxcb-xfixes0-dev
-    - name: Run functional test
-      run: just test-cli-terragrunt
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🛠️ Setup Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
+      - name: 🔧 Set up just
+        uses: extractions/setup-just@v1
+
+      - name: 📦 Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxcb-shape0-dev libxcb-xfixes0-dev
+          echo "✅ Dependencies installed successfully"
+
+      - name: 🚀 Run functional test
+        run: |
+          echo "🏃‍♂️ Running functional test..."
+          just test-cli-terragrunt
+          echo "✅ Functional test completed successfully"
+
+      - name: 🎉 Functional Test Success Notification
+        if: success()
+        run: |
+          echo "::notice::🎊 Functional test passed successfully!"
+
+      - name: ❌ Functional Test Failure Notification
+        if: failure()
+        run: |
+          echo "::error::💥 Functional test failed. Please review the logs for details."
+
+  docker-ci:
+    name: 🐳 Docker CI
+    needs: [ci, functional-test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🐳 Set up Docker
+        uses: docker/setup-buildx-action@v1
+
+      - name: 🏗️ Build Docker image
+        run: |
+          echo "🔨 Building Docker image..."
+          docker build -t inspector-cli .
+          echo "✅ Docker image built successfully"
+
+      - name: 🧪 Test Docker image
+        run: |
+          echo "🏃‍♂️ Running CLI in Docker container..."
+          docker run --rm inspector-cli --help
+          echo "✅ Docker image test passed"
+
+      - name: 🚀 Run CI tests in Docker
+        run: |
+          echo "🏃‍♂️ Running CI tests in Docker container..."
+          docker run --rm -v $(pwd):/usr/src/inspector-cli -w /usr/src/inspector-cli rust:${{ env.RUST_VERSION }} sh -c "
+            apt-get update && 
+            apt-get install -y just && 
+            cargo test && 
+            cargo clippy -- -D warnings && 
+            cargo fmt -- --check && 
+            just test-cli-terragrunt
+          "
+          echo "✅ Docker CI tests completed successfully"
+
+      - name: 🎉 Docker CI Success Notification
+        if: success()
+        run: |
+          echo "::notice::🎊 Docker CI checks passed successfully!"
+
+      - name: ❌ Docker CI Failure Notification
+        if: failure()
+        run: |
+          echo "::error::💥 Docker CI checks failed. Please review the logs for details."

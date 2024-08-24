@@ -110,8 +110,6 @@ fn test_load_config() {
 
 #[test]
 fn test_validate_config() {
-    use serde_yaml::Value;
-
     // Valid config
     let valid_config = serde_yaml::from_str(
         r#"
