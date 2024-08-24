@@ -12,7 +12,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  RUST_VERSION: 1.67.0
+  RUST_VERSION: 1.70.0  # Updated to 1.70.0 to meet tokio's requirements
 
 permissions:
   contents: write
