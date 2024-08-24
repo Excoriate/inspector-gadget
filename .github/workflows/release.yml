@@ -83,16 +83,16 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            artifact_name: inspector-gadget-cli
+            artifact_name: inspector-gadget
             asset_name: inspector-gadget-cli-linux-amd64
           - os: windows-latest
-            artifact_name: inspector-gadget-cli.exe
+            artifact_name: inspector-gadget.exe
             asset_name: inspector-gadget-cli-windows-amd64.exe
           - os: macOS-latest
-            artifact_name: inspector-gadget-cli
+            artifact_name: inspector-gadget
             asset_name: inspector-gadget-cli-macos-amd64
     steps:
-      - name: ���� Checkout repository
+      - name: 📥 Checkout repository
         uses: actions/checkout@v4
 
       - name: 🦀 Setup Rust toolchain
@@ -112,6 +112,9 @@ jobs:
         env:
           RUSTFLAGS: ${{ matrix.os == 'ubuntu-latest' && '-C link-arg=-Wl,-rpath,/usr/lib/x86_64-linux-gnu' || '' }}
           PKG_CONFIG_PATH: ${{ matrix.os == 'ubuntu-latest' && '/usr/lib/x86_64-linux-gnu/pkgconfig:$PKG_CONFIG_PATH' || '' }}
+
+      - name: 📋 List target directory
+        run: ls -R ./target/release
 
       - name: 📤 Upload Release Asset
         uses: actions/upload-release-asset@v1
