@@ -7,6 +7,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  MACOSX_DEPLOYMENT_TARGET: 10.7
 
 jobs:
   publish:
@@ -31,6 +32,11 @@ jobs:
         run: |
           echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
           echo "LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+
+      - name: 🔍 Check for required libraries
+        run: |
+          ls -l /usr/lib/x86_64-linux-gnu/libxcb*
+          ldconfig -p | grep libxcb
 
       - name: 🧹 Clean build artifacts
         run: |
