@@ -54,6 +54,12 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
           targets: ${{ matrix.target }}
 
+      - name: 📦 Install dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools libssl-dev pkg-config
+
       - name: 🔨 Build
         uses: actions-rs/cargo@v1
         with:
