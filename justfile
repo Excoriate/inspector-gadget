@@ -59,3 +59,12 @@ ci: build test-cli-terragrunt check
 # Format code and apply fixes
 format-fix:
     cargo fmt
+
+# Build Docker image, run CLI, and execute CI tests
+docker-ci:
+    @echo "Building Docker image..."
+    docker build -t inspector-cli .
+    @echo "Running CLI in Docker container..."
+    docker run --rm inspector-cli --help
+    @echo "Running CI tests in Docker container..."
+    docker run --rm -v $(pwd):/inspector-cli -w /inspector-cli inspector-cli sh -c "cargo test && cargo clippy -- -D warnings && cargo fmt -- --check && just test-cli-terragrunt"
