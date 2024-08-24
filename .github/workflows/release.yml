@@ -9,6 +9,10 @@ env:
   CARGO_TERM_COLOR: always
   RUST_VERSION: 1.67.0
 
+permissions:
+  contents: write
+  packages: write
+
 jobs:
   create_release:
     name: 📦 Create Release
