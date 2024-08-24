@@ -1,0 +1,15 @@
+url: "https://terragrunt.gruntwork.io/docs/features/keep-your-remote-state-configuration-dry/"
+ignore:
+  domains:
+    - "github.com"
+    - "twitter.com"
+    - "linkedin.com"
+  regex:
+    - "^https://terragrunt.gruntwork.io/docs/.*#.*$"
+forbidden_domains:
+  - "example.com"
+ignored_childs:
+  - "/docs/getting-started/"
+  - "/docs/reference/"
+timeout: 30
+default_output: "json"

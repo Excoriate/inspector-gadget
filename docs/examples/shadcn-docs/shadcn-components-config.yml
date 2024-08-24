@@ -1,0 +1,10 @@
+url: https://ui.shadcn.com/docs/components
+show_links: true
+default_output: txt
+output_file: shadcn-components-links
+ignore:
+  domains: []
+  regex: []
+forbidden_domains: []
+ignored_childs: []
+timeout: 30

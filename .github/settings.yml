@@ -1,0 +1,50 @@
+---
+repository:
+    name: inspector-gadget-cli
+    description: A CLI tool for inspecting and analyzing web links.
+    topics: cli, rust, web-crawler, link-checker, seo-tools
+    default_branch: main
+    allow_squash_merge: true
+    allow_merge_commit: true
+    allow_rebase_merge: true
+    delete_branch_on_merge: true
+    has_projects: true
+    has_wiki: false
+    enable_vulnerability_alerts: true
+    enable_automated_security_fixes: true
+    teams:
+        - name: maintainers
+          permission: admin
+        - name: contributors
+          permission: push
+labels:
+    - name: bug
+      color: CC0000
+      description: Something isn't working 🐛
+    - name: feature
+      color: '#336699'
+      description: New functionality 🚀
+    - name: help wanted
+      color: '#008672'
+      description: Extra attention is needed 🙏
+    - name: documentation
+      color: 0075ca
+      description: Improvements or additions to documentation 📚
+    - name: enhancement
+      color: '#a2eeef'
+      description: Improve existing functionality 🔧
+branches:
+    - name: main
+      protection:
+          required_pull_request_reviews:
+              required_approving_review_count: 1
+              dismiss_stale_reviews: true
+              require_code_owner_reviews: true
+              dismissal_restrictions: {}
+          required_status_checks:
+              strict: true
+              contexts:
+                  - Rust CI
+          enforce_admins: false
+          required_linear_history: true
+          restrictions: null

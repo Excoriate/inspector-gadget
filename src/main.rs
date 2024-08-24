@@ -133,8 +133,6 @@ fn load_config(config_path: Option<&str>) -> Result<Option<Config>, Box<dyn Erro
 
 /// Main function to run the Inspector CLI
 fn main() -> Result<(), Box<dyn Error>> {
-    env_logger::init();
-
     let matches = App::new("inspector-cli")
         .version("0.1.0")
         .about("Inspects links on a documentation site")
@@ -201,6 +199,11 @@ fn main() -> Result<(), Box<dyn Error>> {
             .takes_value(true))
         .get_matches();
 
+    let log_level = matches.value_of("log-level").unwrap();
+
+    // Initialize the logger only once
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(log_level)).init();
+
     // Load configuration if a config file is specified
     let config = load_config(matches.value_of("config"))?;
 
@@ -211,12 +214,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     let url = matches.value_of("URL").or_else(|| Some(&config.url))
         .ok_or_else(|| Box::new(std::io::Error::new(std::io::ErrorKind::InvalidInput, "URL is required when no config file is provided")))?;
 
-    let log_level = matches.value_of("log-level").unwrap();
     let show_links = matches.is_present("show-links");
     let detailed = matches.is_present("detailed");
-
-    // Set log level
-    std::env::set_var("RUST_LOG", log_level);
 
     info!("Starting link inspection for {}", url);
 
@@ -461,8 +460,107 @@ mod tests {
 
     #[test]
     fn test_should_ignore_url() {
-        // Add some unit tests for the should_ignore_url function
+        let base_url = "https://example.com";
+        let config = Config {
+            url: base_url.to_string(),
+            ignore: Some(IgnoreConfig {
+                domains: Some(vec!["ignored.com".to_string()]),
+                regex: Some(vec![".*\\.pdf$".to_string()]),
+            }),
+            forbidden_domains: Some(vec!["forbidden.com".to_string()]),
+            ignored_childs: Some(vec!["ignore-me".to_string()]),
+            timeout: Some(30),
+            default_output: None,
+        };
+
+        // Test ignoring based on domain
+        assert!(should_ignore_url("https://ignored.com/page", &config, base_url));
+
+        // Test ignoring based on regex
+        assert!(should_ignore_url("https://example.com/document.pdf", &config, base_url));
+
+        // Test forbidden domain
+        assert!(should_ignore_url("https://forbidden.com/page", &config, base_url));
+
+        // Test ignored child path
+        assert!(should_ignore_url("https://example.com/ignore-me/page", &config, base_url));
+
+        // Test valid URL (should not be ignored)
+        assert!(!should_ignore_url("https://example.com/valid-page", &config, base_url));
+
+        // Test strict mode (different domain)
+        assert!(should_ignore_url("https://different.com/page", &config, base_url));
     }
 
-    // Add more tests as needed
+    #[test]
+    fn test_load_config() {
+        use std::fs;
+        use tempfile::NamedTempFile;
+
+        // Create a temporary config file
+        let config_content = r#"
+        url: https://example.com
+        ignore:
+          domains:
+            - ignored.com
+          regex:
+            - ".*\\.pdf$"
+        forbidden_domains:
+          - forbidden.com
+        ignored_childs:
+          - ignore-me
+        timeout: 30
+        default_output: json
+        "#;
+
+        let temp_file = NamedTempFile::new().unwrap();
+        fs::write(temp_file.path(), config_content).unwrap();
+
+        // Test loading the config
+        let config = load_config(Some(temp_file.path().to_str().unwrap())).unwrap().unwrap();
+
+        assert_eq!(config.url, "https://example.com");
+        assert_eq!(config.ignore.unwrap().domains.unwrap(), vec!["ignored.com"]);
+        assert_eq!(config.ignore.unwrap().regex.unwrap(), vec![".*\\.pdf$"]);
+        assert_eq!(config.forbidden_domains.unwrap(), vec!["forbidden.com"]);
+        assert_eq!(config.ignored_childs.unwrap(), vec!["ignore-me"]);
+        assert_eq!(config.timeout.unwrap(), 30);
+        assert_eq!(config.default_output.unwrap(), "json");
+
+        // Test loading non-existent config
+        assert!(load_config(Some("non_existent_config.yaml")).is_err());
+    }
+
+    #[test]
+    fn test_validate_config() {
+        use serde_yaml::Value;
+
+        // Valid config
+        let valid_config = serde_yaml::from_str(r#"
+        url: https://example.com
+        ignore:
+          domains:
+            - ignored.com
+          regex:
+            - ".*\\.pdf$"
+        "#).unwrap();
+
+        assert!(validate_config(&valid_config).is_ok());
+
+        // Invalid config (missing url)
+        let invalid_config = serde_yaml::from_str(r#"
+        ignore:
+          domains:
+            - ignored.com
+        "#).unwrap();
+
+        assert!(matches!(validate_config(&invalid_config), Err(ConfigError::MissingField(_))));
+
+        // Invalid config (wrong type for url)
+        let invalid_config = serde_yaml::from_str(r#"
+        url: 123
+        "#).unwrap();
+
+        assert!(matches!(validate_config(&invalid_config), Err(ConfigError::InvalidFieldType(_))));
+    }
 }

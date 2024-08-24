@@ -1,19 +1,19 @@
-# Inspector CLI
+# Inspector Gadget CLI
 
-A CLI tool for inspecting and analyzing web links.
+A powerful CLI tool for inspecting and analyzing web links. Handy when it comes to feeding your LLM with the right context.
 
 ## Installation
 
 You can install Inspector CLI using Cargo:
 
 ```
-cargo install inspector-cli
+cargo install inspector
 ```
 
 ## Usage
 
 ```bash
-inspector-cli <URL> [OPTIONS]
+inspector <URL> [OPTIONS]
 ```
 
 Options:
@@ -36,12 +36,12 @@ Options:
 
 Example:
 ```bash
-inspector-cli https://docs.dagger.io --show-links --output-format=txt --output-file=dagger-doc-links
+inspector https://docs.dagger.io --show-links --output-format=txt --output-file=dagger-doc-links
 ```
 
 ## Configuration
 
-The inspector-cli tool uses a YAML configuration file named `.inspector-config.yml` in the user's home directory. This file allows you to customize various aspects of the link inspection process.
+The inspector tool uses a YAML configuration file named `.inspector-config.yml` in the user's home directory. This file allows you to customize various aspects of the link inspection process.
 
 Here's a description of the configuration options:
 
@@ -80,7 +80,7 @@ default_output: "json"
 You can use a custom configuration file by specifying its path:
 
 ```bash
-inspector-cli https://example.com --config /path/to/custom-config.yml
+inspector https://example.com --config /path/to/custom-config.yml
 ```
 
 ## Contributing
@@ -90,3 +90,85 @@ Contributions are welcome! If you find any issues or have suggestions for improv
 ## License
 
 Inspector CLI is licensed under the [MIT License](LICENSE).
+
+## Examples
+
+### Terragrunt Documentation
+
+To fetch all the Terragrunt documentation, you can use the following commands:
+
+```bash
+# Locally
+just run https://terragrunt.gruntwork.io/docs/features/keep-your-remote-state-configuration-dry/ --show-links --output-format=txt --output-file=terragrunt-docs-links
+# or using the inspector cli
+inspector https://terragrunt.gruntwork.io/docs/features/keep-your-remote-state-configuration-dry/ --show-links --output-format=txt -o terragrunt-docs-links
+```
+
+Alternatively, you can use a configuration file:
+
+```bash
+# Locally
+just run https://terragrunt.gruntwork.io/docs/features/keep-your-remote-state-configuration-dry/ --config docs/examples/terragrunt-docs/terragrunt-inspector-config.yml
+# or using the inspector cli
+inspector https://terragrunt.gruntwork.io/docs/features/keep-your-remote-state-configuration-dry/ --config docs/examples/terragrunt-docs/terragrunt-inspector-config.yml
+```
+
+The `terragrunt-inspector-config.yml` file contains the following configuration:
+
+```yaml
+url: https://terragrunt.gruntwork.io/docs/features/keep-your-remote-state-configuration-dry/
+ignore:
+  domains:
+    - "github.com"
+    - "twitter.com"
+    - "linkedin.com"
+  regex:
+    - "^https://terragrunt.gruntwork.io/docs/features/keep-your-remote-state-configuration-dry/#.*$"
+forbidden_domains:
+  - "example.com"
+ignored_childs:
+  - "/community/"
+  - "/plugins/"
+timeout: 30
+default_output: "json"
+```
+
+### Terraform Documentation
+
+To fetch all the Terraform documentation, you can use the following commands:
+
+```bash
+# Locally
+just run https://terraform-docs.io/user-guide/introduction/ --show-links --output-format=txt --output-file=terraform-docs-links
+# or using the inspector cli
+inspector https://terraform-docs.io/user-guide/introduction/ --show-links --output-format=txt -o terraform-docs-links
+```
+
+Alternatively, you can use a configuration file:
+
+```bash
+# Locally
+just run https://terraform-docs.io/user-guide/introduction/ --config docs/examples/terraform-docs/terraform-docs-inspector-config.yml
+# or using the inspector cli
+inspector https://terraform-docs.io/user-guide/introduction/ --config docs/examples/terraform-docs/terraform-docs-inspector-config.yml
+```
+
+The `terraform-docs-inspector-config.yml` file contains the following configuration:
+
+```yaml
+url: https://terraform-docs.io/user-guide/introduction/
+ignore:
+  domains:
+    - "github.com"
+    - "twitter.com"
+    - "linkedin.com"
+  regex:
+    - "^https://terraform-docs.io/user-guide/.*#.*$"
+forbidden_domains:
+  - "example.com"
+ignored_childs:
+  - "/community/"
+  - "/plugins/"
+timeout: 30
+default_output: "json"
+```
