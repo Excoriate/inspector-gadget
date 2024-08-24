@@ -6,6 +6,8 @@ A powerful CLI tool for inspecting and analyzing web links. Handy when it comes 
 
 ## Installation
 
+### Option 1: Install pre-built binary
+
 You can install the Inspector Gadget CLI using our installation script:
 
 ```bash
@@ -19,6 +21,16 @@ curl -L https://raw.githubusercontent.com/Excoriate/inspector-gadget-cli/main/in
 ```
 
 The CLI will be installed in `/usr/local/bin`.
+
+### From Source
+
+To install Inspector Gadget CLI from source, you can use the provided installation script:
+
+```bash
+bash scripts/install_from_source.sh
+```
+
+This will clone the repository, build the project, and install the binary to `/usr/local/bin`.
 
 ## Usage
 
@@ -181,4 +193,3 @@ ignored_childs:
   - "/plugins/"
 timeout: 30
 default_output: "json"
-```
