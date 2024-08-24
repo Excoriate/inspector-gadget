@@ -1,14 +1,29 @@
 # Inspector Gadget CLI
 
 A powerful CLI tool for inspecting and analyzing web links. Handy when it comes to feeding your LLM with the right context.
+[![🦀 Rust CI](https://github.com/Excoriate/inspector-gadget-cli/actions/workflows/rust.yml/badge.svg)](https://github.com/Excoriate/inspector-gadget-cli/actions/workflows/rust.yml)
 
 ## Installation
 
-You can install Inspector CLI using Cargo:
+You can install Inspector Gadget CLI by downloading the pre-built binary for your operating system from the [latest release](https://github.com/Excoriate/inspector-gadget-cli/releases/latest) page.
 
-```
-cargo install inspector
-```
+### Linux and macOS
+
+1. Download the appropriate binary for your system (e.g., `inspector-gadget-cli-linux-amd64` for Linux or `inspector-gadget-cli-macos-amd64` for macOS).
+2. Make the binary executable:
+   ```
+   chmod +x inspector-gadget-cli-*
+   ```
+3. Move the binary to a directory in your PATH, for example:
+   ```
+   sudo mv inspector-gadget-cli-* /usr/local/bin/inspector
+   ```
+
+### Windows
+
+1. Download the Windows binary (`inspector-gadget-cli-windows-amd64.exe`).
+2. Rename it to `inspector.exe` for convenience.
+3. Move the executable to a directory in your PATH or create a new directory and add it to your PATH.
 
 ## Usage
 
