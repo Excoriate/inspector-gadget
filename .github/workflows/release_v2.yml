@@ -61,7 +61,11 @@ jobs:
       - name: 🔨 Build (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
-          docker run --rm -v ${{ github.workspace }}:/home/rust/src ekidd/rust-musl-builder:stable cargo build --release --target ${{ matrix.target }}
+          docker run --rm -v ${{ github.workspace }}:/home/rust/src \
+            -e CARGO_HOME=/home/rust/.cargo \
+            --user $(id -u):$(id -g) \
+            ekidd/rust-musl-builder:stable \
+            cargo build --release --target ${{ matrix.target }}
 
       - name: 🔨 Build (macOS and Windows)
         if: matrix.os != 'ubuntu-latest'
