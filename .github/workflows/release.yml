@@ -4,6 +4,11 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (e.g., v1.0.0)'
+        required: true
 
 env:
   CARGO_TERM_COLOR: always
@@ -14,8 +19,43 @@ permissions:
   packages: write
 
 jobs:
+  check_release:
+    name: 🔍 Check Existing Release
+    runs-on: ubuntu-latest
+    outputs:
+      release_exists: ${{ steps.check_release.outputs.release_exists }}
+      tag: ${{ steps.get_tag.outputs.tag }}
+    steps:
+      - name: 🏷️ Get tag
+        id: get_tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 🔎 Check if release exists
+        id: check_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.get_tag.outputs.tag }}
+        run: |
+          release_id=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/$TAG" \
+            | jq -r '.id')
+          if [ "$release_id" != "null" ]; then
+            echo "release_exists=true" >> $GITHUB_OUTPUT
+            echo "::notice::Release for tag $TAG already exists. Skipping release creation."
+          else
+            echo "release_exists=false" >> $GITHUB_OUTPUT
+            echo "::notice::No existing release found for tag $TAG. Proceeding with release creation."
+          fi
+
   create_release:
     name: 📦 Create Release
+    needs: check_release
+    if: needs.check_release.outputs.release_exists == 'false'
     runs-on: ubuntu-latest
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
@@ -29,14 +69,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref }}
-          release_name: 🎉 Release ${{ github.ref }}
+          tag_name: ${{ needs.check_release.outputs.tag }}
+          release_name: 🎉 Release ${{ needs.check_release.outputs.tag }}
           draft: false
           prerelease: false
 
   build_and_upload:
     name: 🛠️ Build and Upload Release Asset
-    needs: create_release
+    needs: [check_release, create_release]
+    if: needs.check_release.outputs.release_exists == 'false'
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -85,7 +126,8 @@ jobs:
 
   update_readme:
     name: 📝 Update README
-    needs: [create_release, build_and_upload]
+    needs: [check_release, create_release, build_and_upload]
+    if: needs.check_release.outputs.release_exists == 'false'
     runs-on: ubuntu-latest
     steps:
       - name: 📥 Checkout repository
@@ -93,10 +135,10 @@ jobs:
 
       - name: 🔄 Update README with new version
         run: |
-          sed -i 's/v[0-9]\+\.[0-9]\+\.[0-9]\+/${{ github.ref_name }}/g' README.md
+          sed -i 's/v[0-9]\+\.[0-9]\+\.[0-9]\+/${{ needs.check_release.outputs.tag }}/g' README.md
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git commit -am "Update README for ${{ github.ref_name }}"
+          git commit -am "Update README for ${{ needs.check_release.outputs.tag }}"
           git push
 
       - name: 🎉 Release Success Notification
@@ -106,3 +148,13 @@ jobs:
       - name: ❌ Release Failure Notification
         if: failure()
         run: echo "::error::💥 Failed to release new version or update README. Please check the logs for details."
+
+  notify_existing_release:
+    name: 📢 Notify Existing Release
+    needs: check_release
+    if: needs.check_release.outputs.release_exists == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🔔 Notification
+        run: |
+          echo "::notice::Release for tag ${{ needs.check_release.outputs.tag }} already exists. No action taken."
