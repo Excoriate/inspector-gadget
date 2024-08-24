@@ -1,14 +1,15 @@
 [package]
-name = "inspector-cli"
+name = "inspector-gadget"
 version = "0.1.0"
-authors = ["Your Name <your.email@example.com>"]
+authors = ["Alex Torres <alex_torres@outlook.com>"]
 edition = "2021"
 description = "A CLI tool for inspecting and analyzing web links"
 license = "MIT"
-repository = "https://github.com/yourusername/inspector-cli"
+repository = "https://github.com/Excoriate/inspector-gadget"
 readme = "README.md"
-keywords = ["cli", "web", "inspector", "links"]
+keywords = ["cli", "web", "inspector", "links", "crawler"]
 categories = ["command-line-utilities", "web-programming"]
+documentation = "https://docs.rs/inspector-gadget"
 
 [dependencies]
 clap = "2.33"
@@ -26,6 +27,9 @@ regex = "1.5"
 dirs = "4.0"
 thiserror = "1.0"
 
+[dev-dependencies]
+tempfile = "3.2"
+
 [[bin]]
-name = "inspector-cli"
+name = "inspector-gadget"
 path = "src/main.rs"
