@@ -60,10 +60,23 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libxcb-shape0-dev libxcb-xfixes0-dev libxcb-randr0-dev libxcb-image0-dev libxcb-keysyms1-dev libxcb-xtest0-dev libasound2-dev libpcap-dev
+          sudo apt-get install -y libxcb-shape0-dev libxcb-xfixes0-dev libxcb-randr0-dev libxcb-image0-dev libxcb-keysyms1-dev libxcb-xtest0-dev libasound2-dev libpcap-dev pkg-config
+          echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+
+      - name: 🔍 Debug library paths
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          ls -l /usr/lib/x86_64-linux-gnu/libxcb*
+          pkg-config --libs xcb
+          pkg-config --libs xcb-shape
+          pkg-config --libs xcb-xfixes
 
       - name: 🔨 Build project
-        run: cargo build --release --verbose
+        run: |
+          cargo build --release --verbose
+        env:
+          RUSTFLAGS: "-C link-arg=-Wl,-rpath,/usr/lib/x86_64-linux-gnu"
 
       - name: 📤 Upload Release Asset
         uses: actions/upload-release-asset@v1
@@ -92,7 +105,16 @@ jobs:
       - name: 📦 Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libxcb-shape0-dev libxcb-xfixes0-dev libxcb-randr0-dev libxcb-image0-dev libxcb-keysyms1-dev libxcb-xtest0-dev libasound2-dev libpcap-dev
+          sudo apt-get install -y libxcb-shape0-dev libxcb-xfixes0-dev libxcb-randr0-dev libxcb-image0-dev libxcb-keysyms1-dev libxcb-xtest0-dev libasound2-dev libpcap-dev pkg-config
+          echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+
+      - name: 🔍 Debug library paths
+        run: |
+          ls -l /usr/lib/x86_64-linux-gnu/libxcb*
+          pkg-config --libs xcb
+          pkg-config --libs xcb-shape
+          pkg-config --libs xcb-xfixes
 
       - name: 🔧 Install cargo-release
         uses: taiki-e/install-action@v2
@@ -102,6 +124,7 @@ jobs:
       - name: 🚀 Publish to crates.io
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          RUSTFLAGS: "-C link-arg=-Wl,-rpath,/usr/lib/x86_64-linux-gnu"
         run: |
           git config --global user.email "github-actions@github.com"
           git config --global user.name "GitHub Actions"
