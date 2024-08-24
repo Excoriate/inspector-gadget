@@ -1,0 +1,100 @@
+name: 🚀 Release v2
+
+on:
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (e.g., 1.0.0)'
+        required: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_VERSION: 1.70.0
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  build-and-upload:
+    name: 🛠️ Build and Upload
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - build: linux
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+          - build: macos
+            os: macos-latest
+            target: x86_64-apple-darwin
+          - build: windows
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v3
+
+      - name: 🏷️ Get release version
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=${{ github.event.inputs.tag }}" >> $GITHUB_ENV
+          else
+            echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+          fi
+
+      - name: 🦀 Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: ${{ matrix.target }}
+
+      - name: 🔨 Build
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: true
+          command: build
+          args: --verbose --release --target ${{ matrix.target }}
+
+      - name: 📦 Package
+        shell: bash
+        run: |
+          binary_name="inspector-gadget"
+          
+          dirname="${binary_name}-${{ env.VERSION }}-${{ matrix.target }}"
+          mkdir "$dirname"
+          
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            mv "target/${{ matrix.target }}/release/${binary_name}.exe" "$dirname"
+            7z a "${dirname}.zip" "$dirname"
+            echo "ASSET=${dirname}.zip" >> $GITHUB_ENV
+          else
+            mv "target/${{ matrix.target }}/release/${binary_name}" "$dirname"
+            tar -czf "${dirname}.tar.gz" "$dirname"
+            echo "ASSET=${dirname}.tar.gz" >> $GITHUB_ENV
+          fi
+
+      - name: 📤 Upload Release Asset
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ${{ env.ASSET }}
+          tag_name: ${{ env.VERSION }}
+          name: 🎉 Release ${{ env.VERSION }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  notify-completion:
+    name: 📢 Notify Completion
+    needs: build-and-upload
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🔔 Notification
+        run: |
+          echo "::notice::Release ${{ env.VERSION }} has been successfully created and assets uploaded."
