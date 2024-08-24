@@ -67,6 +67,7 @@ jobs:
           cargo build --release --verbose
         env:
           RUSTFLAGS: "-C link-arg=-Wl,-rpath,/usr/lib/x86_64-linux-gnu"
+          PKG_CONFIG_PATH: "/usr/lib/x86_64-linux-gnu/pkgconfig:$PKG_CONFIG_PATH"
 
       - name: 📤 Upload Release Asset
         uses: actions/upload-release-asset@v1
@@ -106,6 +107,7 @@ jobs:
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
           RUSTFLAGS: "-C link-arg=-Wl,-rpath,/usr/lib/x86_64-linux-gnu"
+          PKG_CONFIG_PATH: "/usr/lib/x86_64-linux-gnu/pkgconfig:$PKG_CONFIG_PATH"
         run: |
           git config --global user.email "github-actions@github.com"
           git config --global user.name "GitHub Actions"
