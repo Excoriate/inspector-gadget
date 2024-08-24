@@ -19,12 +19,13 @@ permissions:
   packages: write
 
 jobs:
-  check_release:
-    name: 🔍 Check Existing Release
+  check_tag_and_release:
+    name: 🔍 Check Tag and Release
     runs-on: ubuntu-latest
     outputs:
-      release_exists: ${{ steps.check_release.outputs.release_exists }}
       tag: ${{ steps.get_tag.outputs.tag }}
+      tag_exists: ${{ steps.check_tag.outputs.tag_exists }}
+      release_exists: ${{ steps.check_release.outputs.release_exists }}
     steps:
       - name: 🏷️ Get tag
         id: get_tag
