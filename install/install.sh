@@ -8,7 +8,7 @@ ARCH=$(uname -m)
 
 if [ "$ARCH" = "x86_64" ]; then
     ARCH="amd64"
-elif [ "$ARCH" = "aarch64" ]; then
+elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
     ARCH="arm64"
 fi
 
@@ -18,9 +18,9 @@ if [ "$OS" = "windows" ]; then
     BINARY_NAME="${BINARY_NAME}.exe"
 fi
 
-BINARY_URL="https://github.com/Excoriate/inspector-gadget/releases/download/${VERSION}/${BINARY_NAME}"
+BINARY_URL="https://github.com/Excoriate/inspector-gadget-cli/releases/download/${VERSION}/${BINARY_NAME}"
 
-echo "Downloading Inspector Gadget version ${VERSION} for ${OS}_${ARCH}..."
+echo "Downloading Inspector Gadget CLI version ${VERSION} for ${OS}_${ARCH}..."
 echo "URL: ${BINARY_URL}"
 
 if ! curl -L -o inspector-gadget "${BINARY_URL}"; then
@@ -39,17 +39,17 @@ fi
 echo "File size: $(wc -c < inspector-gadget) bytes"
 echo "File type: $(file inspector-gadget)"
 
-echo "Installing Inspector Gadget..."
+echo "Installing Inspector Gadget CLI..."
 chmod +x inspector-gadget
 if ! sudo mv inspector-gadget /usr/local/bin/; then
     echo "Error: Failed to move the binary to /usr/local/bin/"
     exit 1
 fi
 
-echo "Inspector Gadget installed successfully in /usr/local/bin"
+echo "Inspector Gadget CLI installed successfully in /usr/local/bin"
 echo "Verifying installation..."
-if inspector-gadget --version; then
-    echo "Inspector Gadget installed successfully!"
+if inspector-gadget --help; then
+    echo "Inspector Gadget CLI installed successfully!"
 else
     echo "Error: Installation verification failed. Please check your PATH and try running 'inspector-gadget --version' manually."
 fi
