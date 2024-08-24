@@ -1,33 +1,35 @@
-# Use a multi-stage build for a smaller final image
-FROM rust:1.67-slim-buster as builder
+# Build stage
+FROM rust:1.67-alpine as builder
+
+# Install build dependencies
+RUN apk add --no-cache musl-dev
 
 # Create a new empty shell project
-RUN USER=root cargo new --bin inspector-cli
 WORKDIR /inspector-cli
 
 # Copy over your manifests
-COPY ./Cargo.lock ./Cargo.lock
-COPY ./Cargo.toml ./Cargo.toml
+COPY Cargo.toml Cargo.lock ./
 
 # Cache dependencies
-RUN cargo build --release
-RUN rm src/*.rs
+RUN mkdir src && \
+    echo "fn main() {println!(\"if you see this, the build broke\")}" > src/main.rs && \
+    cargo build --release && \
+    rm -f target/release/deps/inspector_cli*
 
 # Copy your source tree
 COPY ./src ./src
 
 # Build for release
-RUN rm ./target/release/deps/inspector_cli*
 RUN cargo build --release
 
 # Final stage
-FROM debian:buster-slim
+FROM alpine:3.14
 
-# Install OpenSSL - required for HTTPS requests
-RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
+# Install runtime dependencies
+RUN apk add --no-cache libgcc
 
 # Copy the build artifact from the builder stage
-COPY --from=builder /inspector-cli/target/release/inspector-cli /usr/local/bin/inspector-cli
+COPY --from=builder /inspector-cli/target/release/inspector-cli /usr/local/bin/
 
 # Set the entrypoint
 ENTRYPOINT ["inspector-cli"]

@@ -67,4 +67,4 @@ docker-ci:
     @echo "Running CLI in Docker container..."
     docker run --rm inspector-cli --help
     @echo "Running CI tests in Docker container..."
-    docker run --rm -v $(pwd):/inspector-cli -w /inspector-cli inspector-cli sh -c "cargo test && cargo clippy -- -D warnings && cargo fmt -- --check && just test-cli-terragrunt"
+    docker run --rm -v $(pwd):/inspector-cli -w /inspector-cli rust:1.67-alpine sh -c "apk add --no-cache just && cargo test && cargo clippy -- -D warnings && cargo fmt -- --check && just test-cli-terragrunt"
