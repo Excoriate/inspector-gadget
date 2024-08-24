@@ -91,6 +91,10 @@ jobs:
           - os: macOS-latest
             artifact_name: inspector-gadget
             asset_name: inspector-gadget-macos-amd64
+          - os: macOS-latest
+            artifact_name: inspector-gadget
+            asset_name: inspector-gadget-macos-arm64
+            target: aarch64-apple-darwin
     steps:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
@@ -99,6 +103,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ env.RUST_VERSION }}
+          targets: ${{ matrix.target }}
 
       - name: 📦 Install dependencies (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
@@ -108,13 +113,23 @@ jobs:
           echo "LD_LIBRARY_PATH=/usr/local/lib:/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH" >> $GITHUB_ENV
 
       - name: 🔨 Build project
-        run: cargo build --release --verbose
+        run: |
+          if [ "${{ matrix.target }}" != "" ]; then
+            cargo build --release --verbose --target ${{ matrix.target }}
+          else
+            cargo build --release --verbose
+          fi
         env:
           RUSTFLAGS: ${{ matrix.os == 'ubuntu-latest' && '-C link-arg=-Wl,-rpath,/usr/lib/x86_64-linux-gnu' || '' }}
           PKG_CONFIG_PATH: ${{ matrix.os == 'ubuntu-latest' && '/usr/lib/x86_64-linux-gnu/pkgconfig:$PKG_CONFIG_PATH' || '' }}
 
       - name: 📋 List target directory
-        run: ls -R ./target/release
+        run: |
+          if [ "${{ matrix.target }}" != "" ]; then
+            ls -R ./target/${{ matrix.target }}/release
+          else
+            ls -R ./target/release
+          fi
 
       - name: 📤 Upload Release Asset
         uses: actions/upload-release-asset@v1
@@ -122,7 +137,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: ./target/release/${{ matrix.artifact_name }}
+          asset_path: ${{ matrix.target != '' && format('./target/{0}/release/{1}', matrix.target, matrix.artifact_name) || format('./target/release/{0}', matrix.artifact_name) }}
           asset_name: ${{ matrix.asset_name }}
           asset_content_type: application/octet-stream
 
