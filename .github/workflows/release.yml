@@ -38,9 +38,7 @@ jobs:
 
       - name: 🔨 Build project
         run: |
-          cargo build --release --verbose
-        env:
-          RUSTFLAGS: "-C link-arg=-Wl,-rpath,/usr/lib/x86_64-linux-gnu"
+          RUSTFLAGS="-C link-arg=-lxcb-shape -C link-arg=-lxcb-xfixes" cargo build --release --verbose
 
       - name: 🚀 Publish to crates.io
         uses: katyo/publish-crates@v2
