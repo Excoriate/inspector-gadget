@@ -1,6 +1,20 @@
 //! Inspector CLI
 //!
-//! A CLI tool for inspecting and analyzing web links.
+//! A CLI tool for inspecting and analyzing web links on documentation sites.
+//!
+//! This tool provides functionality to:
+//! - Crawl a given URL and extract all links
+//! - Inspect the status of each link
+//! - Filter links based on various criteria (domains, regex patterns, etc.)
+//! - Output results in different formats (JSON, YAML, TXT, clipboard)
+//!
+//! Usage:
+//!   inspector-cli [OPTIONS] <URL>
+//!
+//! For more information, run:
+//!   inspector-cli --help
+//!
+//! Or use the `just help` command for a quick overview of available options.
 
 use clap::{App, Arg};
 use log::{error, info};
