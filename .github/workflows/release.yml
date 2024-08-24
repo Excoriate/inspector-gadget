@@ -27,18 +27,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libxcb-shape0-dev libxcb-xfixes0-dev libxcb-randr0-dev libxcb-image0-dev libxcb-keysyms1-dev libxcb-xtest0-dev libasound2-dev libpcap-dev
 
-      - name: 🔍 Debug library paths
-        run: |
-          ls -l /usr/lib/x86_64-linux-gnu/libxcb*
-          pkg-config --libs xcb || echo "pkg-config for xcb failed"
-          pkg-config --libs xcb-shape || echo "pkg-config for xcb-shape failed"
-          pkg-config --libs xcb-xfixes || echo "pkg-config for xcb-xfixes failed"
-
       - name: 🚀 Publish to crates.io
-        uses: actions-rs/cargo@v1
+        uses: katyo/publish-crates@v2
         with:
-          command: publish
-          args: --token ${{ secrets.CRATES_TOKEN }}
+          registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
       - name: 🎉 Publish Success Notification
         if: success()
