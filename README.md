@@ -1,6 +1,7 @@
 # Inspector Gadget CLI
 
 A powerful CLI tool for inspecting and analyzing web links. Handy when it comes to feeding your LLM with the right context.
+
 [![🦀 Rust CI](https://github.com/Excoriate/inspector-gadget-cli/actions/workflows/rust.yml/badge.svg)](https://github.com/Excoriate/inspector-gadget-cli/actions/workflows/rust.yml)
 
 ## Installation
