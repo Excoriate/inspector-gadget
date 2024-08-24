@@ -12,7 +12,13 @@ elif [ "$ARCH" = "aarch64" ]; then
     ARCH="arm64"
 fi
 
-BINARY_URL="https://github.com/Excoriate/inspector-gadget-cli/releases/download/${VERSION}/inspector-gadget-cli_${VERSION}_${OS}_${ARCH}"
+# Updated binary name format based on the confirmed release
+BINARY_NAME="inspector-gadget-cli-${OS}-${ARCH}"
+if [ "$OS" = "windows" ]; then
+    BINARY_NAME="${BINARY_NAME}.exe"
+fi
+
+BINARY_URL="https://github.com/Excoriate/inspector-gadget-cli/releases/download/${VERSION}/${BINARY_NAME}"
 
 echo "Downloading Inspector Gadget CLI version ${VERSION} for ${OS}_${ARCH}..."
 echo "URL: ${BINARY_URL}"
