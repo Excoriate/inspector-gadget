@@ -1,1 +1,67 @@
- 
+name: 🏷️ Bump New Version
+
+on:
+  workflow_dispatch:
+    inputs:
+      new_version:
+        description: 'New version to bump to (e.g., v1.2.3)'
+        required: true
+        type: string
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  bump_version:
+    name: 🚀 Bump Version
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🔍 Check if tag exists
+        id: check_tag
+        run: |
+          if git rev-parse "${{ github.event.inputs.new_version }}" >/dev/null 2>&1; then
+            echo "::error::🚫 Tag ${{ github.event.inputs.new_version }} already exists. Aborting."
+            exit 1
+          fi
+        shell: bash
+
+      - name: 🏷️ Create and push new tag
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git tag -a ${{ github.event.inputs.new_version }} -m "🚀 Bump version to ${{ github.event.inputs.new_version }}"
+          git push origin ${{ github.event.inputs.new_version }}
+        shell: bash
+
+      - name: 🎉 Version Bump Success Notification
+        if: success()
+        run: echo "::notice::✅ Successfully bumped version to ${{ github.event.inputs.new_version }}!"
+
+      - name: ❌ Version Bump Failure Notification
+        if: failure()
+        run: echo "::error::💥 Failed to bump version to ${{ github.event.inputs.new_version }}. Please review the logs for details."
+
+      - name: 📢 Notify Slack on success
+        if: success()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: "🎉 Successfully bumped version to ${{ github.event.inputs.new_version }} 🚀"
+          fields: repo,message,commit,author,action,eventName,ref,workflow
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+
+      - name: 📢 Notify Slack on failure
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: "❌ Failed to bump version to ${{ github.event.inputs.new_version }} 💥"
+          fields: repo,message,commit,author,action,eventName,ref,workflow
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
