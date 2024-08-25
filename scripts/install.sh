@@ -2,7 +2,7 @@
 
 set -e
 
-VERSION=${INSPECTOR_GADGET_VERSION:-latest}
+VERSION=${1:-latest}
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
 ARCH=$(uname -m)
 
@@ -12,39 +12,38 @@ elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
     ARCH="arm64"
 fi
 
-# Updated binary name format based on the correct release asset name
-BINARY_NAME="inspector-gadget-${OS}-${ARCH}"
-if [ "$OS" = "windows" ]; then
+BINARY_NAME="inspector-gadget-${VERSION}-${ARCH}-${OS}"
+if [ "$OS" = "darwin" ]; then
+    BINARY_NAME="inspector-gadget-${VERSION}-${ARCH}-apple-darwin"
+elif [ "$OS" = "windows" ]; then
     BINARY_NAME="${BINARY_NAME}.exe"
 fi
 
-BINARY_URL="https://github.com/Excoriate/inspector-gadget-cli/releases/download/${VERSION}/${BINARY_NAME}"
+RELEASE_URL="https://github.com/Excoriate/inspector-gadget-cli/releases/download/${VERSION}/${BINARY_NAME}.tar.gz"
 
 echo "Downloading Inspector Gadget CLI version ${VERSION} for ${OS}_${ARCH}..."
-echo "URL: ${BINARY_URL}"
+echo "URL: ${RELEASE_URL}"
 
-if ! curl -L -o inspector-gadget "${BINARY_URL}"; then
-    echo "Error: Failed to download the binary"
+if ! curl -L -o inspector-gadget.tar.gz "${RELEASE_URL}"; then
+    echo "Error: Failed to download the release"
     exit 1
 fi
 
-echo "Verifying download..."
-if ! [ -s inspector-gadget ]; then
-    echo "Error: Downloaded file is empty or does not exist"
-    echo "Content of the file:"
-    cat inspector-gadget
-    exit 1
-fi
+echo "Extracting archive..."
+tar -xzf inspector-gadget.tar.gz
 
-echo "File size: $(wc -c < inspector-gadget) bytes"
-echo "File type: $(file inspector-gadget)"
+EXTRACTED_DIR=$(tar -tzf inspector-gadget.tar.gz | head -1 | cut -f1 -d"/")
+BINARY_PATH="${EXTRACTED_DIR}/inspector-gadget"
 
 echo "Installing Inspector Gadget CLI..."
-chmod +x inspector-gadget
-if ! sudo mv inspector-gadget /usr/local/bin/; then
+chmod +x "${BINARY_PATH}"
+if ! sudo mv "${BINARY_PATH}" /usr/local/bin/inspector-gadget; then
     echo "Error: Failed to move the binary to /usr/local/bin/"
     exit 1
 fi
+
+echo "Cleaning up..."
+rm -rf "${EXTRACTED_DIR}" inspector-gadget.tar.gz
 
 echo "Inspector Gadget CLI installed successfully in /usr/local/bin"
 echo "Verifying installation..."
