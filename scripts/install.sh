@@ -36,38 +36,42 @@ if [ "$OS" = "darwin" ]; then
     BINARY_NAME="inspector-gadget-${VERSION}-${ARCH}-apple-darwin"
 elif [ "$OS" = "windows" ]; then
     BINARY_NAME="${BINARY_NAME}.exe"
+elif [ "$OS" = "linux" ]; then
+    print_message "33" "ℹ️  Linux support added"
+else
+    handle_error "Unsupported operating system: $OS"
 fi
 
 RELEASE_URL="https://github.com/Excoriate/inspector-gadget-cli/releases/download/${VERSION}/${BINARY_NAME}.tar.gz"
 
-echo "Downloading Inspector Gadget CLI version ${VERSION} for ${OS}_${ARCH}..."
-echo "URL: ${RELEASE_URL}"
+print_message "36" "📥 Downloading Inspector Gadget CLI version ${VERSION} for ${OS}_${ARCH}..."
+print_message "32" "  • URL: ${RELEASE_URL}"
 
 if ! curl -L -o inspector-gadget.tar.gz "${RELEASE_URL}"; then
-    echo "Error: Failed to download the release"
-    exit 1
+    handle_error "Failed to download the release"
 fi
 
-echo "Extracting archive..."
-tar -xzf inspector-gadget.tar.gz
+print_message "36" "📦 Extracting archive..."
+if ! tar -xzf inspector-gadget.tar.gz; then
+    handle_error "Failed to extract the archive"
+fi
 
 EXTRACTED_DIR=$(tar -tzf inspector-gadget.tar.gz | head -1 | cut -f1 -d"/")
 BINARY_PATH="${EXTRACTED_DIR}/inspector-gadget"
 
-echo "Installing Inspector Gadget CLI..."
-chmod +x "${BINARY_PATH}"
+print_message "36" "🛠️  Installing Inspector Gadget CLI..."
+chmod +x "${BINARY_PATH}" || handle_error "Failed to set execute permissions"
 if ! sudo mv "${BINARY_PATH}" /usr/local/bin/inspector-gadget; then
-    echo "Error: Failed to move the binary to /usr/local/bin/"
-    exit 1
+    handle_error "Failed to move the binary to /usr/local/bin/"
 fi
 
-echo "Cleaning up..."
+print_message "36" "🧹 Cleaning up..."
 rm -rf "${EXTRACTED_DIR}" inspector-gadget.tar.gz
 
-echo "Inspector Gadget CLI installed successfully in /usr/local/bin"
-echo "Verifying installation..."
+print_message "32" "✅ Inspector Gadget CLI installed successfully in /usr/local/bin"
+print_message "36" "🔍 Verifying installation..."
 if inspector-gadget --help; then
-    echo "Inspector Gadget CLI installed successfully!"
+    print_message "32" "🎉 Inspector Gadget CLI installed and verified successfully!"
 else
-    echo "Error: Installation verification failed. Please check your PATH and try running 'inspector-gadget --version' manually."
+    handle_error "Installation verification failed. Please check your PATH and try running 'inspector-gadget --version' manually."
 fi
