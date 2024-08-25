@@ -107,22 +107,22 @@ install-cli:
 install-cli-local *version:
     @echo "Installing CLI using local install.sh script..."
     @echo "Version: {{version}}"
-    @if [ -f ./install/install.sh ]; then \
-        chmod +x ./install/install.sh && \
-        INSPECTOR_GADGET_VERSION={{version}} ./install/install.sh; \
+    @if [ -f ./scripts/install.sh ]; then \
+        chmod +x ./scripts/install.sh && \
+        INSPECTOR_GADGET_VERSION={{version}} ./scripts/install.sh; \
     else \
-        echo "Error: install.sh script not found in ./install directory"; \
+        echo "Error: install.sh script not found in ./scripts directory"; \
         exit 1; \
     fi
     @echo "Verifying installation..."
-    @if command -v inspector-gadget-cli >/dev/null 2>&1; then \
-        echo "inspector-gadget-cli is installed at: $(which inspector-gadget-cli)"; \
-        echo "File type: $(file $(which inspector-gadget-cli))"; \
+    @if command -v inspector-gadget >/dev/null 2>&1; then \
+        echo "inspector-gadget is installed at: $(which inspector-gadget)"; \
+        echo "File type: $(file $(which inspector-gadget))"; \
         echo "File content:"; \
-        cat $(which inspector-gadget-cli); \
-        inspector-gadget-cli --help || echo "Failed to run --version"; \
+        cat $(which inspector-gadget); \
+        inspector-gadget --help || echo "Failed to run --help"; \
     else \
-        echo "Error: inspector-gadget-cli not found in PATH"; \
+        echo "Error: inspector-gadget not found in PATH"; \
         exit 1; \
     fi
 
