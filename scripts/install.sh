@@ -31,29 +31,27 @@ else
     handle_error "Unsupported architecture: $ARCH"
 fi
 
-BINARY_NAME="inspector-gadget-${VERSION}-${ARCH}-${OS}"
-if [ "$OS" = "darwin" ]; then
-    BINARY_NAME="inspector-gadget-${VERSION}-${ARCH}-apple-darwin"
-elif [ "$OS" = "windows" ]; then
-    BINARY_NAME="${BINARY_NAME}.exe"
-elif [ "$OS" = "linux" ]; then
-    print_message "33" "ℹ️  Linux support added"
-else
-    handle_error "Unsupported operating system: $OS"
-fi
+# Update the BINARY_NAME construction
+BINARY_NAME="inspector-gadget-${VERSION}-x86_64-apple-darwin"
 
 RELEASE_URL="https://github.com/Excoriate/inspector-gadget-cli/releases/download/${VERSION}/${BINARY_NAME}.tar.gz"
 
 print_message "36" "📥 Downloading Inspector Gadget CLI version ${VERSION} for ${OS}_${ARCH}..."
 print_message "32" "  • URL: ${RELEASE_URL}"
 
-if ! curl -L -o inspector-gadget.tar.gz "${RELEASE_URL}"; then
-    handle_error "Failed to download the release"
+# Download with better error checking
+if ! curl -L -o inspector-gadget.tar.gz "${RELEASE_URL}" --fail --silent --show-error; then
+    handle_error "Failed to download the release. Please check the URL and your internet connection."
+fi
+
+# Check if the downloaded file is empty or too small
+if [ ! -s inspector-gadget.tar.gz ] || [ "$(wc -c < inspector-gadget.tar.gz)" -lt 1000 ]; then
+    handle_error "Downloaded file is empty or too small. Possible invalid URL or GitHub rate limiting."
 fi
 
 print_message "36" "📦 Extracting archive..."
 if ! tar -xzf inspector-gadget.tar.gz; then
-    handle_error "Failed to extract the archive"
+    handle_error "Failed to extract the archive. The downloaded file may be corrupted or not a valid tar.gz archive."
 fi
 
 EXTRACTED_DIR=$(tar -tzf inspector-gadget.tar.gz | head -1 | cut -f1 -d"/")
