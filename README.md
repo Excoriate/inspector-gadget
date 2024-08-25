@@ -11,7 +11,7 @@ A powerful CLI tool for inspecting and analyzing web links. Handy when it comes 
 You can install the Inspector Gadget CLI using our installation script:
 
 ```bash
-curl -sSf https://raw.githubusercontent.com/Excoriate/inspector-gadget-cli/main/install/install.sh | sh
+curl -sSf https://raw.githubusercontent.com/Excoriate/inspector-gadget-cli/main/scripts/install.sh | sh
 ```
 
 This script will download the appropriate binary for your platform, extract it, and install it to `/usr/local/bin` with the correct permissions. You can then run the `inspector` command directly without needing to use `./inspector-gadget`.

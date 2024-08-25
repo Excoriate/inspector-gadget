@@ -2,14 +2,33 @@
 
 set -e
 
-VERSION=${1:-latest}
+# Function to print colorful messages
+print_message() {
+    local color=$1
+    local message=$2
+    echo -e "\033[${color}m${message}\033[0m"
+}
+
+# Function to handle errors
+handle_error() {
+    print_message "31" "❌ Error: $1"
+    exit 1
+}
+
+VERSION=${INSPECTOR_GADGET_VERSION:-latest}
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
 ARCH=$(uname -m)
+
+print_message "36" "🔍 Detecting system information..."
+print_message "32" "  • Operating System: $OS"
+print_message "32" "  • Architecture: $ARCH"
 
 if [ "$ARCH" = "x86_64" ]; then
     ARCH="amd64"
 elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
     ARCH="arm64"
+else
+    handle_error "Unsupported architecture: $ARCH"
 fi
 
 BINARY_NAME="inspector-gadget-${VERSION}-${ARCH}-${OS}"
